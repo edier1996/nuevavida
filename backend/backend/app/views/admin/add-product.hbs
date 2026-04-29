@@ -1,0 +1,72 @@
+<section>
+  <div class="container">
+    <h1>Add Product</h1>
+
+
+    <form id="add-product-form" action="/admin/add-product" method="post" enctype="multipart/form-data">
+
+      <div class="form-group">
+        <label for="price">Product Id:</label>
+        <div class="input-group">
+          <input type="number" class="form-control" id="id" name="id" min="0" step="1" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="name">Name:</label>
+        <input type="text" class="form-control" id="name" name="name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="category">Category:</label>
+        <select class="form-control" id="category" name="category" required>
+          <option value="" disabled selected>Select category</option>
+          {{#each productCategories}}
+          <option value="{{this._id}}">{{this.name}}</option>
+          {{/each}}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="description">Description:</label>
+        <textarea class="form-control" id="description" name="description" rows="5" required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="availableStock">Available Stock:</label>
+        <div class="input-group">
+          <div class="input-group-prepend">
+            <span class="input-group-text">Stock</span>
+          </div>
+          <input type="number" class="form-control" id="availableStock" name="availableStock" min="1" step="1" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="price">Price:</label>
+        <div class="input-group">
+          <div class="input-group-prepend">
+            <span class="input-group-text">$</span>
+          </div>
+          <input type="number" class="form-control" id="price" name="price" min="0" step="0.01" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="image">Image:</label>
+        <div class="custom-file">
+          <input type="file" class="custom-file-input" id="image" name="image" accept="image/*" multiple required>
+          <label class="custom-file-label" for="image">Choose file</label>
+        </div>
+        <div id="image-preview" class="mt-2"></div>
+      </div>
+
+
+      <button type="submit" class="btn btn-primary">Add Product</button>
+      <button type="reset" class="btn btn-secondary ml-2">Reset</button>
+      
+    </form>
+
+
+  </div>
+</section>

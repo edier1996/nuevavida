@@ -1,0 +1,90 @@
+<style>
+  .form-container {
+    width: 300px;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  .form-container input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+  }
+  .form-container button {
+    width: 100%;
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .countdown {
+    margin-top: 10px;
+    font-size: 16px;
+    color: red;
+    animation: blink 1s infinite;
+  }
+  @keyframes blink {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+</style>
+
+<div style="padding-top: 200px; padding-bottom: 100px;">
+
+  <div class="form-container">
+
+    <h2>OTP Validation</h2>
+
+    <form id="otp-form" action="/verify-user-signup" method="post">
+
+      <label for="otp">Enter OTP:</label>
+
+      <input type="text" id="otp" name="otp" placeholder="Enter the OTP received via SMS">
+
+      {{#if otpError}}
+        <div>
+            <p style="color: red;">{{otpError}}</p>
+        </div>
+      {{/if}}
+
+      <button type="submit">Verify OTP</button>
+
+      <div class="countdown" id="countdown"></div>
+
+    </form>
+
+  </div>
+
+</div>
+
+<script>
+  // Countdown timer for 1 minute
+  const countdownDuration = 60; // seconds
+  let countdown = countdownDuration;
+
+  const countdownTimer = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      clearInterval(countdownTimer);
+      window.location.href = '/resend-otp'; // Redirect to /resend-otp route
+    }
+    document.getElementById('countdown').innerText = `OTP will expire in ${countdown} seconds`;
+  }, 1000);
+
+  function verifyOTP() {
+    // Submit the form programmatically
+    document.getElementById("otp-form").submit();
+  }
+</script>
