@@ -8,6 +8,9 @@
     "dev": "nodemon index.js",
     "test": "jest"
   },
+  "engines": {
+    "node": ">=20 <21"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
