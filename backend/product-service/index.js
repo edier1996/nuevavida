@@ -9,8 +9,17 @@ const PORT = process.env.PORT || 5001
 const app = express()
 dotenv.config()
 
+// CORS configuration
+const corsOptions = {
+  origin: '*', // Allow all origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}
+
 app.use(express.json())
-app.use(cors())
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions)) // Handle preflight requests
 
 // Test connection and sync
 sequelize.authenticate()
