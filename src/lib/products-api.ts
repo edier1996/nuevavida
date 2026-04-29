@@ -96,16 +96,19 @@ export const createProduct = async (payload: Product): Promise<Product> => {
 
   if (!response.ok) {
     const fallback = "No se pudo crear la publicación";
+    let message = fallback;
+
     try {
       const data = await response.json();
-      const message =
+      message =
         (typeof data?.error === "string" && data.error) ||
         (typeof data?.message === "string" && data.message) ||
         fallback;
-      throw new Error(message);
     } catch {
-      throw new Error(fallback);
+      // Keep fallback if body is not JSON.
     }
+
+    throw new Error(message);
   }
 
   const created = (await response.json()) as ApiProduct;
