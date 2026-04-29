@@ -249,7 +249,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             (typeof data?.message === "string" && data.message) ||
             apiError;
         } catch {
-          // Keep default message.
+          try {
+            const raw = await response.text();
+            if (raw.includes("<!DOCTYPE") || raw.includes("Cannot GET") || raw.includes("Not Found")) {
+              apiError =
+                "El frontend no está apuntando correctamente al servicio de usuarios. Revisa VITE_USERS_API_BASE_URL en Railway.";
+            }
+          } catch {
+            // Keep default message.
+          }
         }
         return { success: false, error: apiError };
       }
