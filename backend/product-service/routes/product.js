@@ -48,7 +48,10 @@ router.post("/create", async (req, res) => {
     })
     res.status(201).json(newProduct)
   } catch (err) {
-    res.status(500).send("Server error")
+    console.error("Error creating product:", err)
+    res.status(500).json({
+      error: err?.original?.sqlMessage || err?.message || "Server error",
+    })
   }
 })
 

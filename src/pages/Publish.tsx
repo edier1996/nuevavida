@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Upload, X } from "lucide-react";
 
 const Publish = () => {
+  const MAX_IMAGES = 5;
+  const MAX_TOTAL_IMAGE_BYTES = 3 * 1024 * 1024;
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<Category>("otros");
@@ -29,16 +32,59 @@ const Publish = () => {
     });
   };
 
+  const compressImageToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const maxWidth = 1280;
+          const maxHeight = 1280;
+
+          let { width, height } = img;
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            reject(new Error("No se pudo procesar la imagen"));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          // Use JPEG compression to keep SQL payloads smaller.
+          const compressed = canvas.toDataURL("image/jpeg", 0.72);
+          resolve(compressed);
+        };
+        img.onerror = reject;
+        img.src = reader.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const estimateBase64Bytes = (dataUrl: string): number => {
+    const base64 = dataUrl.split(",")[1] || "";
+    return Math.floor((base64.length * 3) / 4);
+  };
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    const maxImages = 5;
     const currentCount = images.length;
-    const remainingSlots = maxImages - currentCount;
+    const remainingSlots = MAX_IMAGES - currentCount;
 
     if (files.length > remainingSlots) {
-      setError(`Solo puedes subir hasta ${maxImages} imágenes. Has seleccionado ${files.length} pero solo quedan ${remainingSlots} espacios disponibles.`);
+      setError(`Solo puedes subir hasta ${MAX_IMAGES} imágenes. Has seleccionado ${files.length} pero solo quedan ${remainingSlots} espacios disponibles.`);
       return;
     }
 
@@ -46,15 +92,32 @@ const Publish = () => {
 
     try {
       const newImages: string[] = [];
+      let totalBytes = images.reduce((acc, img) => acc + estimateBase64Bytes(img), 0);
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (file.size > 5 * 1024 * 1024) { // 5MB limit
-          setError(`La imagen ${file.name} es demasiado grande. Máximo 5MB por imagen.`);
+        if (file.size > 8 * 1024 * 1024) {
+          setError(`La imagen ${file.name} es demasiado grande. Máximo 8MB por imagen.`);
           return;
         }
-        const base64 = await convertToBase64(file);
+
+        const base64 = await compressImageToBase64(file);
+        const imageBytes = estimateBase64Bytes(base64);
+
+        if (imageBytes > 1 * 1024 * 1024) {
+          setError(`La imagen ${file.name} sigue siendo muy pesada tras comprimir. Usa una imagen más liviana.`);
+          return;
+        }
+
+        totalBytes += imageBytes;
+        if (totalBytes > MAX_TOTAL_IMAGE_BYTES) {
+          setError("Las imágenes superan el tamaño máximo permitido para publicar. Reduce cantidad o peso.");
+          return;
+        }
+
         newImages.push(base64);
       }
+
       setImages([...images, ...newImages]);
     } catch (error) {
       setError("Error al procesar las imágenes. Inténtalo de nuevo.");
@@ -96,7 +159,6 @@ const Publish = () => {
     }
 
     const newProduct = {
-      id: Date.now().toString(),
       title,
       description,
       category,
@@ -111,7 +173,6 @@ const Publish = () => {
       sellerAvatar: "",
       status: "active" as const,
       donationStatus: "disponible" as const,
-      createdAt: new Date().toISOString(),
       sold: false,
       commission: 0,
     };
@@ -120,8 +181,8 @@ const Publish = () => {
       await createProduct(newProduct);
       alert("¡Publicación creada exitosamente como donación/abonación!");
       navigate("/");
-    } catch {
-      setError("No se pudo publicar en la base de datos SQL. Intenta de nuevo en unos segundos.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo publicar en la base de datos SQL. Intenta de nuevo en unos segundos.");
     }
   };
 

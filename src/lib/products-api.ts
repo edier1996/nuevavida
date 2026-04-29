@@ -95,7 +95,17 @@ export const createProduct = async (payload: Product): Promise<Product> => {
   });
 
   if (!response.ok) {
-    throw new Error("No se pudo crear la publicación");
+    const fallback = "No se pudo crear la publicación";
+    try {
+      const data = await response.json();
+      const message =
+        (typeof data?.error === "string" && data.error) ||
+        (typeof data?.message === "string" && data.message) ||
+        fallback;
+      throw new Error(message);
+    } catch {
+      throw new Error(fallback);
+    }
   }
 
   const created = (await response.json()) as ApiProduct;
