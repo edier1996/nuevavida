@@ -1,0 +1,59 @@
+# Frontend .dockerignore
+# Acelera builds de Docker al no copiar archivos innecesarios
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Node modules (serán reinstalados en Docker)
+node_modules
+npm-debug.log
+npm-error.log
+yarn-error.log
+yarn-debug.log
+.pnp
+
+# IDE
+.vscode
+.idea
+.DS_Store
+*.swp
+*.swo
+*~
+.env.local
+.env.*.local
+
+# Build files (serán creados en Docker)
+dist
+build
+.next
+out
+
+# Testing
+coverage
+.nyc_output
+
+# Documentation
+README.md
+docs
+.mdx
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Config files
+.prettierrc
+.eslintrc
+.editorconfig
+.browserlistrc
+.babelrc
+
+# Misc
+TODO.md
+*.log
+.cache
+.turbo

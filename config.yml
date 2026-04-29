@@ -1,0 +1,9 @@
+tunnel: nuevavida-app
+credentials-file: C:\Users\edier\.cloudflared\15fa6a11-1408-4b8e-a920-5bcbc61da92a.json
+
+ingress:
+  - hostname: nuevavida1327.com
+    service: http://localhost:8080
+  - hostname: www.nuevavida1327.com
+    service: http://localhost:8080
+  - service: http_status:404
