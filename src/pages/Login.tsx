@@ -28,13 +28,11 @@ const Login = () => {
       return;
     }
 
-    const success = await register(name, email, password, phone, city, address);
-    if (success) {
+    const result = await register(name, email, password, phone, city, address);
+    if (result.success) {
       navigate("/");
     } else {
-      setError(
-        "No se pudo crear la cuenta. Asegúrate de que el email no esté registrado y la contraseña sea fuerte (mínimo 8 caracteres, incluye mayúsculas, minúsculas, números y símbolos)."
-      );
+      setError(result.error || "No se pudo crear la cuenta.");
     }
   };
 
@@ -162,3 +160,5 @@ const Login = () => {
 };
 
 export default Login;
+
+

@@ -51,7 +51,7 @@ interface AuthContextType {
     city: string,
     address: string,
     role?: 'admin' | 'worker' | 'user'
-  ) => Promise<boolean>;
+  ) => Promise<{ success: boolean; error?: string }>;
   createUser: (
     name: string,
     email: string,
@@ -217,14 +217,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     city: string,
     address: string,
     role: 'admin' | 'worker' | 'user' = 'user'
-  ): Promise<boolean> => {
+  ): Promise<{ success: boolean; error?: string }> => {
     // Registro SQL para cuentas de usuario final
     if (role !== "user") {
-      return false;
+      return { success: false, error: "Solo se permite el registro de usuarios finales." };
     }
 
     if (!isPasswordStrong(password)) {
-      return false;
+      return {
+        success: false,
+        error:
+          "La contraseña debe tener mínimo 8 caracteres e incluir mayúsculas, minúsculas, números y símbolos.",
+      };
     }
 
     try {
@@ -237,7 +241,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (!response.ok) {
-        return false;
+        let apiError = "No se pudo crear la cuenta.";
+        try {
+          const data = await response.json();
+          apiError =
+            (typeof data?.error === "string" && data.error) ||
+            (typeof data?.message === "string" && data.message) ||
+            apiError;
+        } catch {
+          // Keep default message.
+        }
+        return { success: false, error: apiError };
       }
 
       const data = await response.json();
@@ -252,7 +266,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       };
 
       if (!registeredUser.id) {
-        return false;
+        return { success: false, error: "Respuesta inválida del servidor al registrar." };
       }
 
       if (data.token) {
@@ -266,9 +280,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       setUser(registeredUser);
       localStorage.setItem("user", JSON.stringify(registeredUser));
-      return true;
+      return { success: true };
     } catch {
-      return false;
+      return { success: false, error: "No se pudo conectar con el servicio de usuarios." };
     }
   };
 
@@ -328,3 +342,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+
+
