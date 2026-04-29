@@ -153,11 +153,6 @@ const Publish = () => {
       return;
     }
 
-    if (images.length === 0) {
-      setError("Debes subir al menos una imagen del producto.");
-      return;
-    }
-
     const newProduct = {
       title,
       description,
@@ -165,7 +160,7 @@ const Publish = () => {
       price: 0,
       isGift: true,
       condition: "bueno" as const,
-      images: imagesToSave,
+      images: images.length > 0 ? images : ["/placeholder.svg"],
       city,
       sellerId: user!.id,
       sellerEmail: user!.email,
