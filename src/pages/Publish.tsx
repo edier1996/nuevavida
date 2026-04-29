@@ -165,7 +165,7 @@ const Publish = () => {
       price: 0,
       isGift: true,
       condition: "bueno" as const,
-      images,
+      images: imagesToSave,
       city,
       sellerId: user!.id,
       sellerEmail: user!.email,
@@ -337,3 +337,4 @@ const Publish = () => {
 };
 
 export default Publish;
+
