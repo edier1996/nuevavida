@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopping-cart-service
+  labels:
+    app: shopping-cart-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: shopping-cart-service
+  template:
+    metadata:
+      labels:
+        app: shopping-cart-service
+    spec:
+      containers:
+        - name: shopping-cart-service
+          image: thisisaarush/shopping-cart-service:latest
+          ports:
+            - containerPort: 5002
+          env:
+            - name: MONGO_URI
+              value: "mongodb://admin:password@mongo-0.mongo.default.svc.cluster.local:27017/cart?authSource=admin"
+            - name: PRODUCT_SERVICE_URI
+              value: "http://product-service.default.svc.cluster.local:5001"
+          livenessProbe:
+            httpGet:
+              path: /api/cart
+              port: 5002
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/cart
+              port: 5002
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

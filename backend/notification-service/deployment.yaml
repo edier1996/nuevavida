@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  labels:
+    app: notification-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: thisisaarush/notification-service:latest
+          ports:
+            - containerPort: 5005
+          env:
+            - name: NODEMAILER_EMAIL
+              value: "your-email@example.com"
+            - name: NODEMAILER_PASSWORD
+              value: "your-email-password"
+            - name: TWILIO_ACCOUNT_SID
+              value: "your-twilio-sid"
+            - name: TWILIO_AUTH_TOKEN
+              value: "your-twilio-token"
+            - name: TWILIO_PHONE_NUMBER
+              value: "your-twilio-phone"
+          livenessProbe:
+            httpGet:
+              path: /api/notification/health
+              port: 5005
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/notification/health
+              port: 5005
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

@@ -1,0 +1,157 @@
+version: "3.8"
+
+services:
+  user-service:
+    build: ./user-service
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_NAME=userdb
+      - JWT_SECRET=${JWT_SECRET:- local-secret-key}
+    networks:
+      - ecommerce-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: on-failure
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "5001:5001"
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_NAME=productdb
+    networks:
+      - ecommerce-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: on-failure
+
+  shopping-cart-service:
+    build: ./shopping-cart-service
+    ports:
+      - "5002:5002"
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_NAME=cartdb
+    networks:
+      - ecommerce-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: on-failure
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "5003:5003"
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_NAME=orderdb
+    networks:
+      - ecommerce-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: on-failure
+
+  payment-service:
+    build: ./payment-service
+    ports:
+      - "5004:5004"
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_NAME=paymentdb
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_placeholder}
+    networks:
+      - ecommerce-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: on-failure
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "5005:5005"
+    environment:
+      - NODEMAILER_EMAIL=${NODEMAILER_EMAIL}
+      - NODEMAILER_PASSWORD=${NODEMAILER_PASSWORD}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-placeholder}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-+1234567890}
+    networks:
+      - ecommerce-network
+    restart: on-failure
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: defaultdb
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: on-failure
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: password
+    networks:
+      - ecommerce-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: on-failure
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ../dist:/usr/share/nginx/html:ro
+    networks:
+      - ecommerce-network
+    depends_on:
+      - user-service
+      - product-service
+      - shopping-cart-service
+      - order-service
+      - payment-service
+    restart: on-failure
+
+volumes:
+  mysql-data:
+
+networks:
+  ecommerce-network:
+    driver: bridge

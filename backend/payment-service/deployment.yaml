@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  labels:
+    app: payment-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image: thisisaarush/payment-service:latest
+          ports:
+            - containerPort: 5004
+          env:
+            - name: MONGO_URI
+              value: "mongodb://admin:password@mongo-0.mongo.default.svc.cluster.local:27017/payments?authSource=admin"
+            - name: STRIPE_SECRET_KEY
+              value: "your-stripe-secret-key"
+          livenessProbe:
+            httpGet:
+              path: /api/payments
+              port: 5004
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/payments
+              port: 5004
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
