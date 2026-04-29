@@ -10,11 +10,24 @@ dotenv.config()
 const app = express()
 
 // CORS configuration
+const allowedOrigins = [
+  "https://nuevavida1327.com",
+  "http://localhost:8080",
+  "http://localhost:5173",
+]
+
 const corsOptions = {
-  origin: '*', // Allow all origins
+  origin(origin, callback) {
+    // Allow server-to-server/no-origin requests and browser origins in allowlist.
+    if (!origin) return callback(null, true)
+    if (allowedOrigins.includes(origin) || /\.up\.railway\.app$/i.test(origin)) {
+      return callback(null, true)
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`), false)
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
+  credentials: false,
 }
 
 // middleware
