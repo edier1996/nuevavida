@@ -241,23 +241,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (!response.ok) {
-        let apiError = "No se pudo crear la cuenta.";
+        let apiError = `Error ${response.status}`;
         try {
-          const data = await response.json();
-          apiError =
-            (typeof data?.error === "string" && data.error) ||
-            (typeof data?.message === "string" && data.message) ||
-            apiError;
-        } catch {
+          const raw = await response.text();
           try {
-            const raw = await response.text();
+            const data = JSON.parse(raw);
+            apiError =
+              (typeof data?.error === "string" && data.error) ||
+              (typeof data?.message === "string" && data.message) ||
+              (typeof data?.msg === "string" && data.msg) ||
+              `Error ${response.status}: ${raw.slice(0, 200)}`;
+          } catch {
             if (raw.includes("<!DOCTYPE") || raw.includes("Cannot GET") || raw.includes("Not Found")) {
               apiError =
-                "El frontend no está apuntando correctamente al servicio de usuarios. Revisa VITE_USERS_API_BASE_URL en Railway.";
+                "El frontend no apunta al servicio de usuarios. Revisa VITE_USERS_API_BASE_URL en Railway.";
+            } else {
+              apiError = `Error ${response.status}: ${raw.slice(0, 200)}`;
             }
-          } catch {
-            // Keep default message.
           }
+        } catch {
+          apiError = `Error ${response.status} al crear cuenta`;
         }
         return { success: false, error: apiError };
       }
@@ -289,8 +292,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(registeredUser);
       localStorage.setItem("user", JSON.stringify(registeredUser));
       return { success: true };
-    } catch {
-      return { success: false, error: "No se pudo conectar con el servicio de usuarios." };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, error: `No se pudo conectar: ${msg}` };
     }
   };
 
