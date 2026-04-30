@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Bell, MessageCircle, Heart, DollarSign, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  fetchNotifications,
+  markNotificationAsRead as apiMarkNotificationAsRead,
+  type ApiNotification,
+} from "@/lib/notifications-api";
 
 export interface Notification {
   id: string;
@@ -15,85 +20,150 @@ export interface Notification {
   read: boolean;
   createdAt: string;
   actionUrl?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
+
+const toNotification = (n: ApiNotification): Notification => ({
+  id: n.id,
+  type: n.type,
+  title: n.title,
+  message: n.message,
+  read: n.read,
+  createdAt: n.createdAt,
+  actionUrl: n.actionUrl,
+  metadata: n.metadata,
+});
+
+const persistLocal = (userId: string, list: Notification[]) => {
+  localStorage.setItem(`notifications_${userId}`, JSON.stringify(list));
+};
 
 const NotificationsDropdown = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [usingApi, setUsingApi] = useState(false);
   const { user } = useAuth();
 
+  // Load notifications from API, fall back to localStorage
   useEffect(() => {
     if (!user) return;
 
-    // Cargar notificaciones del localStorage
-    const storageKey = `notifications_${user.id}`;
-    const stored = JSON.parse(localStorage.getItem(storageKey) || "[]");
-    setNotifications(stored);
-    setUnreadCount(stored.filter((n: Notification) => !n.read).length);
-
-    // Escuchar cambios en mensajes para crear notificaciones
-    const checkForNewMessages = () => {
-      const messages = JSON.parse(localStorage.getItem("messages") || "[]");
-      const userMessages = messages.filter((msg: any) =>
-        (msg.to === user.id || msg.to === user.email) && !msg.read
-      );
-
-      userMessages.forEach((msg: any) => {
-        const existingNotification = stored.find((n: Notification) =>
-          n.type === "message" && n.metadata?.messageId === msg.id
+    const loadNotifications = async () => {
+      try {
+        const apiNotifs = await fetchNotifications(user.id);
+        const mapped = apiNotifs.map(toNotification);
+        setNotifications(mapped);
+        setUnreadCount(mapped.filter((n) => !n.read).length);
+        setUsingApi(true);
+        // Keep local cache in sync
+        persistLocal(user.id, mapped);
+      } catch {
+        // Fall back to localStorage
+        setUsingApi(false);
+        const storageKey = `notifications_${user.id}`;
+        const stored: Notification[] = JSON.parse(
+          localStorage.getItem(storageKey) || "[]"
         );
+        setNotifications(stored);
+        setUnreadCount(stored.filter((n) => !n.read).length);
 
-        if (!existingNotification) {
-          const newNotification: Notification = {
-            id: `msg_${msg.id}`,
-            type: "message",
-            title: "Nuevo mensaje",
-            message: `Tienes un mensaje sobre "${msg.subject}"`,
-            read: false,
-            createdAt: new Date().toISOString(),
-            actionUrl: "/mensajes",
-            metadata: { messageId: msg.id, from: msg.from }
-          };
+        // Poll for new messages from localStorage when API is unavailable
+        const checkForNewMessages = () => {
+          const messages = JSON.parse(localStorage.getItem("messages") || "[]");
+          const userMessages = messages.filter(
+            (msg: any) =>
+              (msg.to === user.id || msg.to === user.email) && !msg.read
+          );
 
-          stored.unshift(newNotification);
-          setNotifications([...stored]);
-          setUnreadCount(prev => prev + 1);
-        }
-      });
+          setNotifications((prev) => {
+            let changed = false;
+            const next = [...prev];
+            userMessages.forEach((msg: any) => {
+              const exists = next.find(
+                (n) => n.type === "message" && (n.metadata as any)?.messageId === msg.id
+              );
+              if (!exists) {
+                next.unshift({
+                  id: `msg_${msg.id}`,
+                  type: "message",
+                  title: "Nuevo mensaje",
+                  message: `Tienes un mensaje sobre "${msg.subject}"`,
+                  read: false,
+                  createdAt: new Date().toISOString(),
+                  actionUrl: "/mensajes",
+                  metadata: { messageId: msg.id, from: msg.from },
+                });
+                changed = true;
+              }
+            });
+            if (changed) {
+              persistLocal(user.id, next);
+              setUnreadCount(next.filter((n) => !n.read).length);
+            }
+            return changed ? next : prev;
+          });
+        };
 
-      localStorage.setItem(storageKey, JSON.stringify(stored));
+        const interval = setInterval(checkForNewMessages, 30000);
+        checkForNewMessages();
+        return () => clearInterval(interval);
+      }
     };
 
-    // Verificar mensajes cada 30 segundos
-    const interval = setInterval(checkForNewMessages, 30000);
-    checkForNewMessages(); // Verificar inmediatamente
-
-    return () => clearInterval(interval);
+    loadNotifications();
   }, [user]);
 
-  const markAsRead = (notificationId: string) => {
-    const updated = notifications.map(n =>
-      n.id === notificationId ? { ...n, read: true } : n
-    );
-    setNotifications(updated);
-    setUnreadCount(updated.filter(n => !n.read).length);
-    if (user) localStorage.setItem(`notifications_${user.id}`, JSON.stringify(updated));
-  };
+  const markAsRead = useCallback(
+    async (notificationId: string) => {
+      setNotifications((prev) => {
+        const updated = prev.map((n) =>
+          n.id === notificationId ? { ...n, read: true } : n
+        );
+        setUnreadCount(updated.filter((n) => !n.read).length);
+        if (user) persistLocal(user.id, updated);
+        return updated;
+      });
 
-  const markAllAsRead = () => {
-    const updated = notifications.map(n => ({ ...n, read: true }));
-    setNotifications(updated);
-    setUnreadCount(0);
-    if (user) localStorage.setItem(`notifications_${user.id}`, JSON.stringify(updated));
-  };
+      if (usingApi) {
+        try {
+          await apiMarkNotificationAsRead(notificationId);
+        } catch {
+          // non-critical
+        }
+      }
+    },
+    [user, usingApi]
+  );
 
-  const deleteNotification = (notificationId: string) => {
-    const updated = notifications.filter(n => n.id !== notificationId);
-    setNotifications(updated);
-    setUnreadCount(updated.filter(n => !n.read).length);
-    if (user) localStorage.setItem(`notifications_${user.id}`, JSON.stringify(updated));
-  };
+  const markAllAsRead = useCallback(async () => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => ({ ...n, read: true }));
+      setUnreadCount(0);
+      if (user) persistLocal(user.id, updated);
+      return updated;
+    });
+
+    if (usingApi) {
+      // Mark each unread notification as read on the server (non-blocking)
+      notifications
+        .filter((n) => !n.read)
+        .forEach((n) => {
+          apiMarkNotificationAsRead(n.id).catch(() => {});
+        });
+    }
+  }, [user, usingApi, notifications]);
+
+  const deleteNotification = useCallback(
+    (notificationId: string) => {
+      setNotifications((prev) => {
+        const updated = prev.filter((n) => n.id !== notificationId);
+        setUnreadCount(updated.filter((n) => !n.read).length);
+        if (user) persistLocal(user.id, updated);
+        return updated;
+      });
+    },
+    [user]
+  );
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
