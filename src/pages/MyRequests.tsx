@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.jpeg";
 import { mockProducts, type Product } from "@/lib/mock-data";
+import { fetchConversations, fetchMessages, sendMessage as apiSendMessage, markMessageAsRead, type ApiMessage } from "@/lib/messaging-api";
 
-const WORKER_INQUIRIES_KEY = "worker_inquiries";
 const PLATFORM_USER_ID = "platform";
 const PLATFORM_USER_NAME = "Nueva Vida (Plataforma)";
 
@@ -49,6 +49,19 @@ const statusColors: Record<Inquiry["status"], string> = {
   resolved: "bg-green-600",
 };
 
+const toStoredMessage = (msg: ApiMessage): StoredMessage => ({
+  id: msg.id,
+  from: msg.from,
+  to: msg.to,
+  fromName: msg.fromName,
+  toName: msg.toName,
+  productId: msg.productId,
+  subject: msg.subject,
+  content: msg.content,
+  timestamp: msg.timestamp,
+  read: msg.read,
+});
+
 const MyRequests = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -62,7 +75,8 @@ const MyRequests = () => {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    const storedInquiries: Inquiry[] = JSON.parse(localStorage.getItem(WORKER_INQUIRIES_KEY) || "[]");
+    // Load inquiries from localStorage (worker_inquiries still managed locally)
+    const storedInquiries: Inquiry[] = JSON.parse(localStorage.getItem("worker_inquiries") || "[]");
     const mine = storedInquiries
       .filter(
         (inq) =>
@@ -75,14 +89,39 @@ const MyRequests = () => {
     setRequests(mine);
     setSelectedId((prev) => prev || mine[0]?.id || null);
 
-    const storedMessages = localStorage.getItem("messages");
-    const backupMessages = localStorage.getItem("messages_backup");
-    const parsedMessages: StoredMessage[] = storedMessages
-      ? JSON.parse(storedMessages)
-      : backupMessages
-      ? JSON.parse(backupMessages)
-      : [];
-    setMessages(parsedMessages);
+    // Load messages from Messaging Service API, fall back to localStorage
+    const loadMessages = async () => {
+      try {
+        const conversations = await fetchConversations(user.id);
+        if (conversations.length > 0) {
+          const allMsgs: StoredMessage[] = [];
+          await Promise.all(
+            conversations.map(async (conv) => {
+              try {
+                const msgs = await fetchMessages(conv.id);
+                allMsgs.push(...msgs.map(toStoredMessage));
+              } catch {
+                // skip failed conversation
+              }
+            })
+          );
+          setMessages(allMsgs);
+          return;
+        }
+      } catch {
+        // fall through to localStorage
+      }
+      const storedMessages = localStorage.getItem("messages");
+      const backupMessages = localStorage.getItem("messages_backup");
+      const parsedMessages: StoredMessage[] = storedMessages
+        ? JSON.parse(storedMessages)
+        : backupMessages
+        ? JSON.parse(backupMessages)
+        : [];
+      setMessages(parsedMessages);
+    };
+
+    loadMessages();
 
     const userProducts = JSON.parse(localStorage.getItem("products") || "[]");
     setAllProducts([...mockProducts, ...userProducts]);
@@ -131,7 +170,7 @@ const MyRequests = () => {
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }, [messages, selectedRequest, user]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!newMessage.trim() || !selectedRequest || !user) return;
 
     const otherId =
@@ -144,7 +183,7 @@ const MyRequests = () => {
       selectedRequest.sellerName ||
       PLATFORM_USER_NAME;
 
-    const message: StoredMessage = {
+    const optimistic: StoredMessage = {
       id: Date.now().toString(),
       from: user.id,
       to: otherId,
@@ -157,10 +196,30 @@ const MyRequests = () => {
       read: false,
     };
 
-    const updated = [...messages, message];
+    // Optimistic UI update
+    const updated = [...messages, optimistic];
     setMessages(updated);
     persistMessages(updated);
     setNewMessage("");
+
+    // Persist to Messaging Service API
+    try {
+      const saved = await apiSendMessage({
+        from: user.id,
+        to: otherId,
+        fromName: user.name,
+        toName: otherName,
+        productId: selectedRequest.productId,
+        subject: `Seguimiento solicitud ${selectedRequest.productTitle}`,
+        content: optimistic.content,
+      });
+      // Replace optimistic entry with server-confirmed message
+      setMessages((prev) =>
+        prev.map((m) => (m.id === optimistic.id ? toStoredMessage(saved) : m))
+      );
+    } catch {
+      // Keep optimistic message — already in localStorage via persistMessages
+    }
   };
 
   useEffect(() => {

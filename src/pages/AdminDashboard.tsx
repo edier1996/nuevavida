@@ -47,7 +47,7 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    setRequests(getRequests());
+    getRequests().then(setRequests).catch(() => {});
   }, []);
 
   const handleCreateUser = async () => {
@@ -97,8 +97,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleSelectRequest = (id: string) => {
-    const updated = updateRequestStatus(id, "selected");
+  const handleSelectRequest = async (id: string) => {
+    const updated = await updateRequestStatus(id, "selected");
     setRequests(updated);
     toast({
       title: "Beneficiario seleccionado",
@@ -106,8 +106,8 @@ const AdminDashboard = () => {
     });
   };
 
-  const handleMarkDelivered = (id: string) => {
-    const updated = updateRequestStatus(id, "delivered");
+  const handleMarkDelivered = async (id: string) => {
+    const updated = await updateRequestStatus(id, "delivered");
     setRequests(updated);
     toast({
       title: "Entrega cerrada",

@@ -1,10 +1,19 @@
-﻿import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { mockProducts, type Product } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import logo from "@/assets/logo.jpeg";
+import {
+  fetchConversations,
+  fetchMessages,
+  sendMessage as apiSendMessage,
+  markMessageAsRead as apiMarkMessageAsRead,
+  setupWebSocket,
+  type ApiMessage,
+  type ApiConversation,
+} from "@/lib/messaging-api";
 
 interface Message {
   id: string;
@@ -23,13 +32,30 @@ interface Message {
 const PLATFORM_USER_ID = "platform";
 const PLATFORM_USER_NAME = "Nueva Vida (Plataforma)";
 
+const toMessage = (msg: ApiMessage): Message => ({
+  id: msg.id,
+  from: msg.from,
+  to: msg.to,
+  fromName: msg.fromName,
+  toName: msg.toName,
+  productId: msg.productId || "general",
+  subject: msg.subject || "",
+  content: msg.content,
+  image: msg.image,
+  timestamp: msg.timestamp,
+  read: msg.read,
+});
+
 const Messages = () => {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversationsState] = useState<ApiConversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [allProducts, setAllProducts] = useState<Product[]>(mockProducts);
+  const [usingApi, setUsingApi] = useState(false);
   const { user, isAuthenticated } = useAuth();
   const location = useLocation();
+  const wsRef = useRef<WebSocket | null>(null);
 
   const persistMessages = (list: Message[]) => {
     const serialized = JSON.stringify(list);
@@ -48,50 +74,119 @@ const Messages = () => {
     }
   };
 
-  const markAsRead = useCallback((conversationKey: string) => {
-    const otherUserId = conversationKey;
-    const userId = user?.id;
-    const userEmail = user?.email;
+  const markAsRead = useCallback(
+    (conversationKey: string) => {
+      const otherUserId = conversationKey;
+      const userId = user?.id;
+      const userEmail = user?.email;
 
-    setMessages((prev) => {
-      let changed = false;
-      const updated = prev.map((msg) => {
-        if (
-          (msg.from === otherUserId || msg.from === userEmail) &&
-          (msg.to === userId || msg.to === userEmail) &&
-          !msg.read
-        ) {
-          changed = true;
-          return { ...msg, read: true };
+      setMessages((prev) => {
+        let changed = false;
+        const updated = prev.map((msg) => {
+          if (
+            (msg.from === otherUserId || msg.from === userEmail) &&
+            (msg.to === userId || msg.to === userEmail) &&
+            !msg.read
+          ) {
+            changed = true;
+            return { ...msg, read: true };
+          }
+          return msg;
+        });
+
+        if (changed) {
+          persistMessages(updated);
+          // Mark as read on the server (non-blocking)
+          updated
+            .filter((m) => m.read && !prev.find((p) => p.id === m.id)?.read)
+            .forEach((m) => {
+              apiMarkMessageAsRead(m.id).catch(() => {});
+            });
         }
-        return msg;
+
+        return changed ? updated : prev;
       });
+    },
+    [user]
+  );
 
-      if (changed) {
-        persistMessages(updated);
-      }
-
-      return changed ? updated : prev;
-    });
-  }, [user]);
-
+  // Load conversations and messages from API, fall back to localStorage
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user) return;
 
-    const storedMessages = localStorage.getItem("messages");
-    const backupMessages = localStorage.getItem("messages_backup");
-    const parsed = storedMessages
-      ? JSON.parse(storedMessages)
-      : backupMessages
-        ? JSON.parse(backupMessages)
-        : [];
-    setMessages(parsed);
+    const loadData = async () => {
+      try {
+        const convs = await fetchConversations(user.id);
+        setConversationsState(convs);
+        setUsingApi(true);
+
+        // Load messages for all conversations
+        const allMsgs: Message[] = [];
+        await Promise.all(
+          convs.map(async (conv) => {
+            try {
+              const msgs = await fetchMessages(conv.id);
+              allMsgs.push(...msgs.map(toMessage));
+            } catch {
+              // skip
+            }
+          })
+        );
+        setMessages(allMsgs);
+      } catch {
+        // Fall back to localStorage
+        setUsingApi(false);
+        const storedMessages = localStorage.getItem("messages");
+        const backupMessages = localStorage.getItem("messages_backup");
+        const parsed = storedMessages
+          ? JSON.parse(storedMessages)
+          : backupMessages
+          ? JSON.parse(backupMessages)
+          : [];
+        setMessages(parsed);
+      }
+    };
+
+    loadData();
 
     const userProducts = JSON.parse(localStorage.getItem("products") || "[]");
     setAllProducts([...mockProducts, ...userProducts]);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
-  const conversations = useMemo(() => {
+  // WebSocket: connect when a conversation is selected
+  useEffect(() => {
+    if (!selectedConversation || !usingApi) return;
+
+    // Close previous connection
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    const ws = setupWebSocket(selectedConversation, {
+      onMessage: (msg: ApiMessage) => {
+        setMessages((prev) => {
+          if (prev.find((m) => m.id === msg.id)) return prev;
+          const updated = [...prev, toMessage(msg)];
+          persistMessages(updated);
+          return updated;
+        });
+      },
+      onError: () => {
+        // WebSocket error — real-time disabled, polling would be an alternative
+      },
+    });
+
+    wsRef.current = ws;
+
+    return () => {
+      ws?.close();
+      wsRef.current = null;
+    };
+  }, [selectedConversation, usingApi]);
+
+  // Build local conversation list from messages (used when API is unavailable)
+  const localConversations = useMemo(() => {
     if (!user) return [];
     const userId = user.id;
     const userEmail = user.email;
@@ -108,7 +203,10 @@ const Messages = () => {
 
     userMessages.forEach((msg) => {
       const otherUserId = msg.from === userId || msg.from === userEmail ? msg.to : msg.from;
-      const otherUserName = msg.from === userId || msg.from === userEmail ? msg.toName || msg.to : msg.fromName || msg.from;
+      const otherUserName =
+        msg.from === userId || msg.from === userEmail
+          ? msg.toName || msg.to
+          : msg.fromName || msg.from;
       const productKey = msg.productId || "general";
       const product = allProducts.find((p) => p.id === msg.productId);
 
@@ -138,10 +236,40 @@ const Messages = () => {
       }
     });
 
-    return Array.from(conversationMap.values()).sort((a, b) =>
-      new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime()
+    return Array.from(conversationMap.values()).sort(
+      (a, b) =>
+        new Date(b.lastMessage.timestamp).getTime() -
+        new Date(a.lastMessage.timestamp).getTime()
     );
   }, [messages, user, allProducts]);
+
+  // Merge API conversations with locally-derived ones
+  const displayConversations = useMemo(() => {
+    if (usingApi && conversations.length > 0) {
+      // Map API conversations to the shape expected by the UI
+      return conversations.map((conv) => {
+        const lastMsg = conv.lastMessage;
+        const otherUserId =
+          lastMsg.from === user?.id || lastMsg.from === user?.email
+            ? lastMsg.to
+            : lastMsg.from;
+        const otherUserName =
+          lastMsg.from === user?.id || lastMsg.from === user?.email
+            ? lastMsg.toName || lastMsg.to
+            : lastMsg.fromName || lastMsg.from;
+        const product = allProducts.find((p) => p.id === lastMsg.productId);
+        return {
+          key: conv.id,
+          otherUser: otherUserName,
+          otherUserId,
+          lastProduct: product,
+          lastMessage: lastMsg,
+          unreadCount: conv.unreadCount,
+        };
+      });
+    }
+    return localConversations;
+  }, [usingApi, conversations, localConversations, user, allProducts]);
 
   // Selección inicial por query (?with)
   useEffect(() => {
@@ -149,7 +277,7 @@ const Messages = () => {
     const withUser = params.get("with");
 
     const desiredKey = withUser || null;
-    const fallbackKey = conversations[0]?.key;
+    const fallbackKey = displayConversations[0]?.key;
     const keyToUse = desiredKey || fallbackKey;
 
     if (keyToUse) {
@@ -157,7 +285,7 @@ const Messages = () => {
       markAsRead(keyToUse);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, conversations, markAsRead]);
+  }, [location.search, displayConversations, markAsRead]);
 
   const selectedConvMessages = useMemo(() => {
     if (!selectedConversation || !user) return [];
@@ -179,29 +307,32 @@ const Messages = () => {
 
   // Mantener selección válida
   useEffect(() => {
-    if (!selectedConversation && conversations.length > 0) {
-      setSelectedConversation(conversations[0].key);
-      markAsRead(conversations[0].key);
+    if (!selectedConversation && displayConversations.length > 0) {
+      setSelectedConversation(displayConversations[0].key);
+      markAsRead(displayConversations[0].key);
     } else if (
       selectedConversation &&
-      !conversations.find((c) => c.key === selectedConversation)
+      !displayConversations.find((c) => c.key === selectedConversation)
     ) {
-      const next = conversations[0]?.key;
+      const next = displayConversations[0]?.key;
       setSelectedConversation(next || null);
       if (next) markAsRead(next);
     }
-  }, [conversations, selectedConversation, markAsRead]);
+  }, [displayConversations, selectedConversation, markAsRead]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !user) return;
 
     const otherUserId = selectedConversation;
-    const message: Message = {
+    const toName =
+      otherUserId === PLATFORM_USER_ID ? PLATFORM_USER_NAME : otherUserId;
+
+    const optimistic: Message = {
       id: Date.now().toString(),
       from: user.id,
       to: otherUserId,
       fromName: user.name,
-      toName: otherUserId === PLATFORM_USER_ID ? PLATFORM_USER_NAME : otherUserId,
+      toName,
       productId: "general",
       subject: `Interés en producto`,
       content: newMessage,
@@ -209,11 +340,29 @@ const Messages = () => {
       read: false,
     };
 
-    const updatedMessages = [...messages, message];
-
+    const updatedMessages = [...messages, optimistic];
     setMessages(updatedMessages);
     persistMessages(updatedMessages);
     setNewMessage("");
+
+    // Persist to Messaging Service API
+    try {
+      const saved = await apiSendMessage({
+        from: user.id,
+        to: otherUserId,
+        fromName: user.name,
+        toName,
+        productId: "general",
+        subject: `Interés en producto`,
+        content: optimistic.content,
+      });
+      // Replace optimistic entry with server-confirmed message
+      setMessages((prev) =>
+        prev.map((m) => (m.id === optimistic.id ? toMessage(saved) : m))
+      );
+    } catch {
+      // Keep optimistic message — already in localStorage via persistMessages
+    }
   };
 
   const deleteMessage = (id: string) => {
@@ -290,8 +439,8 @@ const Messages = () => {
             <div className="lg:col-span-1">
               <h2 className="text-lg font-semibold text-foreground mb-4">Conversaciones</h2>
               <div className="space-y-2">
-                {conversations.length > 0 ? (
-                  conversations.map((conv) => (
+                {displayConversations.length > 0 ? (
+                  displayConversations.map((conv) => (
                     <div
                       key={conv.key}
                       onClick={() => {
@@ -340,10 +489,10 @@ const Messages = () => {
                   <div className="p-4 bg-green-500 text-white flex items-center justify-between gap-3">
                     <div>
                       <h3 className="font-semibold">
-                        {conversations.find((c) => c.key === selectedConversation)?.otherUser || selectedConversation}
+                        {displayConversations.find((c) => c.key === selectedConversation)?.otherUser || selectedConversation}
                       </h3>
                       {(() => {
-                        const conv = conversations.find((c) => c.key === selectedConversation);
+                        const conv = displayConversations.find((c) => c.key === selectedConversation);
                         const product = conv?.lastProduct;
                         return product ? (
                           <p className="text-sm opacity-90 mt-1">

@@ -1,9 +1,11 @@
-﻿import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { mockProducts, type Product } from "@/lib/mock-data";
 import { fetchProducts } from "@/lib/products-api";
 import { addRequest, type NeedLevel } from "@/lib/requests";
+import { trackEvent } from "@/lib/analytics-api";
+import { sendMessage as apiSendMessage } from "@/lib/messaging-api";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, ChevronLeft, ChevronRight, X, ZoomIn } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -63,6 +65,12 @@ const ProductDetail = () => {
     loadProducts();
   }, []);
 
+  // Track product view event
+  useEffect(() => {
+    if (!id) return;
+    trackEvent("product_view", user?.id, id, { productId: id });
+  }, [id, user?.id]);
+
   useEffect(() => {
     if (user?.city) {
       setRequesterCity(user.city);
@@ -86,7 +94,7 @@ const ProductDetail = () => {
     reader.readAsDataURL(file);
   };
 
-  const submitRequest = () => {
+  const submitRequest = async () => {
     if (!isAuthenticated) {
       navigate("/login");
       return;
@@ -118,7 +126,8 @@ const ProductDetail = () => {
       `Ciudad del producto: ${product.city}` +
       (firstImageUrl ? `\nImagen: ${firstImageUrl}` : "");
 
-    const created = addRequest({
+    // Create order via API (with localStorage fallback inside addRequest)
+    const created = await addRequest({
       productId: product.id,
       productTitle: product.title,
       productCity: product.city,
@@ -138,8 +147,15 @@ const ProductDetail = () => {
 
     const requestId = created.id;
 
-    const messages = JSON.parse(localStorage.getItem("messages") || "[]") as StoredMessage[];
-    messages.push({
+    // Track the request event
+    trackEvent("product_request", user.id, product.id, {
+      requestId,
+      needLevel,
+      productTitle: product.title,
+    });
+
+    // Send initial message via Messaging Service API (with localStorage fallback)
+    const msgPayload: StoredMessage = {
       id: requestId,
       from: user.id,
       to: workerId,
@@ -151,17 +167,33 @@ const ProductDetail = () => {
       image: evidence || firstImageUrl,
       timestamp: now,
       read: false,
-    });
+    };
 
     try {
-      localStorage.setItem("messages", JSON.stringify(messages));
-      localStorage.setItem("messages_backup", JSON.stringify(messages));
+      await apiSendMessage({
+        from: msgPayload.from,
+        to: msgPayload.to,
+        fromName: msgPayload.fromName,
+        toName: msgPayload.toName,
+        productId: msgPayload.productId,
+        subject: msgPayload.subject,
+        content: msgPayload.content,
+      });
     } catch {
-      const trimmed = messages.slice(-200);
-      localStorage.setItem("messages", JSON.stringify(trimmed));
-      localStorage.setItem("messages_backup", JSON.stringify(trimmed));
+      // Fallback: persist to localStorage
+      const messages = JSON.parse(localStorage.getItem("messages") || "[]") as StoredMessage[];
+      messages.push(msgPayload);
+      try {
+        localStorage.setItem("messages", JSON.stringify(messages));
+        localStorage.setItem("messages_backup", JSON.stringify(messages));
+      } catch {
+        const trimmed = messages.slice(-200);
+        localStorage.setItem("messages", JSON.stringify(trimmed));
+        localStorage.setItem("messages_backup", JSON.stringify(trimmed));
+      }
     }
 
+    // Keep worker_inquiries in sync for the WorkerDashboard (local-only feature)
     const existingInquiries = JSON.parse(localStorage.getItem("worker_inquiries") || "[]");
     const newInquiry = {
       id: requestId,
