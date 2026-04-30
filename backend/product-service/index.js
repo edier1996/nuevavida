@@ -12,17 +12,23 @@ dotenv.config()
 // CORS configuration
 const allowedOrigins = [
   "https://nuevavida1327.com",
+  "https://nuevavida-production.up.railway.app",
   "http://localhost:8080",
   "http://localhost:5173",
 ]
 
 const corsOptions = {
   origin(origin, callback) {
-    // Allow server-to-server/no-origin requests and browser origins in allowlist.
+    // Allow server-to-server / no-origin requests (e.g. curl, server-to-server).
     if (!origin) return callback(null, true)
-    if (allowedOrigins.includes(origin) || /\.up\.railway\.app$/i.test(origin)) {
+
+    // Allow any *.up.railway.app subdomain (covers all Railway preview/production URLs).
+    const isRailwayDomain = /^https:\/\/[^/]+\.up\.railway\.app$/.test(origin)
+
+    if (allowedOrigins.includes(origin) || isRailwayDomain) {
       return callback(null, true)
     }
+
     return callback(new Error(`CORS blocked for origin: ${origin}`), false)
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
