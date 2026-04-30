@@ -9,6 +9,6 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
   logging: false,
 })
 
-const { Commission, Sponsorship } = require('./models/payment')(sequelize)
+const { Conversation, Message } = require('./models/message')(sequelize)
 
-module.exports = { sequelize, Commission, Sponsorship }
+module.exports = { sequelize, Conversation, Message }

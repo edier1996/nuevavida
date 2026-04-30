@@ -1,45 +1,57 @@
 const { DataTypes } = require('sequelize')
 
 module.exports = (sequelize) => {
-  const Order = sequelize.define('Order', {
+  const DonationRequest = sequelize.define('DonationRequest', {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
-      autoIncrement: true,
     },
-    userId: {
+    productId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
+    requesterId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
+    requesterEmail: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    products: {
-      type: DataTypes.JSON,
+    requesterName: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
-    totalAmount: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+    donorId: {
+      type: DataTypes.UUID,
+      allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM('pending', 'confirmed', 'shipped', 'delivered', 'cancelled'),
+      type: DataTypes.ENUM('pending', 'accepted', 'rejected', 'completed'),
+      allowNull: false,
       defaultValue: 'pending',
     },
-    shippingAddress: {
-      type: DataTypes.JSON,
-      allowNull: false,
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
-    trackingNumber: {
+    location: {
       type: DataTypes.STRING,
+      allowNull: true,
     },
-    estimatedDelivery: {
-      type: DataTypes.DATE,
+    city: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
-    shippingCost: {
-      type: DataTypes.DECIMAL(10, 2),
+    country: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   }, {
-    tableName: 'orders',
+    tableName: 'donation_requests',
     timestamps: true,
   })
 
-  return Order
+  return DonationRequest
 }

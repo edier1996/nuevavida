@@ -9,6 +9,6 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
   logging: false,
 })
 
-const Order = require('./models/order')(sequelize)
+const DonationRequest = require('./models/order')(sequelize)
 
-module.exports = { sequelize, Order }
+module.exports = { sequelize, DonationRequest }

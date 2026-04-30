@@ -1,20 +1,26 @@
 {
   "name": "notification-service",
   "version": "1.0.0",
-  "description": "",
+  "description": "NuevaVida Notification Service",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "jest"
   },
+  "engines": {
+    "node": ">=20 <21"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "mysql2": "^3.10.3",
     "nodemailer": "^6.9.14",
+    "sequelize": "^6.37.3",
     "twilio": "^5.2.3"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 {
-  "name": "order-service",
+  "name": "messaging-service",
   "version": "1.0.0",
-  "description": "NuevaVida Donation Request Service",
+  "description": "NuevaVida Messaging Service with WebSocket support",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -19,7 +19,8 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "mysql2": "^3.10.3",
-    "sequelize": "^6.37.3"
+    "sequelize": "^6.37.3",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
