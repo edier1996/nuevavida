@@ -1,7 +1,7 @@
 {
-  "name": "order-service",
+  "name": "analytics-service",
   "version": "1.0.0",
-  "description": "NuevaVida Donation Request Service",
+  "description": "NuevaVida Analytics Service",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

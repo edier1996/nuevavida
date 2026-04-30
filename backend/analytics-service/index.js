@@ -1,12 +1,13 @@
 const express = require("express")
 const dotenv = require("dotenv")
 const cors = require("cors")
-const { sequelize, DonationRequest } = require('./db')
-const orderRoutes = require("./routes/order")
-
-const PORT = process.env.PORT || 5002
+const { sequelize } = require('./db')
+const analyticsRoutes = require("./routes/analytics")
 
 dotenv.config()
+
+const PORT = process.env.PORT || 5006
+
 const app = express()
 
 // CORS configuration
@@ -35,21 +36,21 @@ app.use(express.json())
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
 
-// Test connection and sync
+// Routes
+app.use("/api/analytics", analyticsRoutes)
+
+// Test connection, sync DB, then start server
 sequelize.authenticate()
   .then(() => {
-    console.log('✅ Order Service is Connected to MySQL')
+    console.log('✅ Analytics Service is Connected to MySQL')
     return sequelize.sync({ alter: true })
   })
   .then(() => {
     console.log('Database synchronized')
     app.listen(PORT, () => {
-      console.log(`Order Service running on port ${PORT}`)
+      console.log(`Analytics Service running on port ${PORT}`)
     })
   })
   .catch((err) => {
-    console.error("🚫 Failed to connect to MySQL -> Order Service", err)
+    console.error("🚫 Failed to connect to MySQL -> Analytics Service", err)
   })
-
-// routes
-app.use("/api/orders", orderRoutes)
