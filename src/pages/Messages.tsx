@@ -52,6 +52,7 @@ const Messages = () => {
 
   const loadConversations = useCallback(async () => {
     if (!user) return;
+    console.log('[Messages] loadConversations: fetching for user', user.id);
     setIsLoading(true);
     try {
       const conversations = await fetchConversations(user.id);
@@ -97,7 +98,7 @@ const Messages = () => {
 
       setConversationViews(views);
     } catch (err) {
-      console.error("Error al cargar conversaciones:", err);
+      console.error("[Messages] loadConversations error:", err, JSON.stringify(err));
       toast.error("No se pudieron cargar los mensajes. Intenta de nuevo más tarde.");
     } finally {
       setIsLoading(false);
@@ -220,6 +221,7 @@ const Messages = () => {
     setNewMessage("");
     setIsSending(true);
 
+    console.log('[Messages] sendMessage: conversationId', selectedConversationId, 'content', optimisticMessage.content);
     try {
       const { message: saved } = await apiSendMessage({
         conversationId: selectedConversationId,
@@ -241,7 +243,7 @@ const Messages = () => {
         )
       );
     } catch (err) {
-      console.error("Error al enviar mensaje:", err);
+      console.error("[Messages] sendMessage error:", err, JSON.stringify(err));
       toast.error("No se pudo enviar el mensaje. Intenta de nuevo.");
       // Roll back optimistic update
       setConversationViews((prev) =>
@@ -265,6 +267,7 @@ const Messages = () => {
   // ── Delete message ─────────────────────────────────────────────────────────
 
   const deleteMessage = async (messageId: string, conversationId: string) => {
+    console.log('[Messages] deleteMessage: messageId', messageId, 'conversationId', conversationId);
     // Optimistic removal
     setConversationViews((prev) =>
       prev.map((v) => {
@@ -281,7 +284,7 @@ const Messages = () => {
     try {
       await apiDeleteMessage(messageId);
     } catch (err) {
-      console.error("Error al eliminar mensaje:", err);
+      console.error("[Messages] deleteMessage error:", err, JSON.stringify(err));
       toast.error("No se pudo eliminar el mensaje. Intenta de nuevo.");
       // Re-fetch to restore state
       loadConversations();

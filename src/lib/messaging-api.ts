@@ -44,6 +44,11 @@ const resolveMessagingApiBaseUrl = () => {
 
 const API_BASE_URL = resolveMessagingApiBaseUrl();
 
+console.log('[Messaging API] VITE_MESSAGING_API_BASE_URL:', import.meta.env.VITE_MESSAGING_API_BASE_URL);
+console.log('[Messaging API] VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
+console.log('[Messaging API] VITE_API_URL:', import.meta.env.VITE_API_URL);
+console.log('[Messaging API] Resolved API_BASE_URL:', API_BASE_URL);
+
 const getAuthHeaders = (): HeadersInit => {
   const token = localStorage.getItem("auth_token");
   return {
@@ -59,6 +64,7 @@ const getAuthHeaders = (): HeadersInit => {
  * Returns all conversations the user participates in, ordered by updatedAt DESC.
  */
 export const fetchConversations = async (userId: string): Promise<Conversation[]> => {
+  console.log('[fetchConversations] URL:', `${API_BASE_URL}/api/messages/user/${encodeURIComponent(userId)}`);
   const response = await fetch(
     `${API_BASE_URL}/api/messages/user/${encodeURIComponent(userId)}`,
     { headers: getAuthHeaders() }
@@ -79,6 +85,7 @@ export const fetchConversations = async (userId: string): Promise<Conversation[]
 export const fetchConversationMessages = async (
   conversationId: string
 ): Promise<{ conversation: Conversation; messages: Message[] }> => {
+  console.log('[fetchConversationMessages] URL:', `${API_BASE_URL}/api/messages/conversation/${encodeURIComponent(conversationId)}`);
   const response = await fetch(
     `${API_BASE_URL}/api/messages/conversation/${encodeURIComponent(conversationId)}`,
     { headers: getAuthHeaders() }
@@ -107,6 +114,7 @@ export const sendMessage = async (params: {
   productId?: string;
   orderId?: string;
 }): Promise<{ conversation: Conversation; message: Message }> => {
+  console.log('[sendMessage] URL:', `${API_BASE_URL}/api/messages/create`, 'Payload:', params);
   const response = await fetch(`${API_BASE_URL}/api/messages/create`, {
     method: "POST",
     headers: getAuthHeaders(),
@@ -125,6 +133,7 @@ export const sendMessage = async (params: {
  * Marks a single message as read. Returns the updated Message object.
  */
 export const markAsRead = async (messageId: string): Promise<Message> => {
+  console.log('[markAsRead] URL:', `${API_BASE_URL}/api/messages/${encodeURIComponent(messageId)}/read`);
   const response = await fetch(
     `${API_BASE_URL}/api/messages/${encodeURIComponent(messageId)}/read`,
     {
@@ -145,6 +154,7 @@ export const markAsRead = async (messageId: string): Promise<Message> => {
  * Deletes a message. Returns { msg: "Message deleted" }.
  */
 export const deleteMessage = async (messageId: string): Promise<void> => {
+  console.log('[deleteMessage] URL:', `${API_BASE_URL}/api/messages/${encodeURIComponent(messageId)}`);
   const response = await fetch(
     `${API_BASE_URL}/api/messages/${encodeURIComponent(messageId)}`,
     {
