@@ -69,13 +69,14 @@ type ApiRequest = Record<string, unknown>;
 
 const toBackendStatus = (status: RequestStatus): string => {
   switch (status) {
+    case "in_review":
+      return "in_review";
     case "selected":
       return "accepted";
     case "delivered":
       return "completed";
     case "rejected":
       return "rejected";
-    case "in_review":
     case "pending":
     default:
       return "pending";
@@ -83,6 +84,7 @@ const toBackendStatus = (status: RequestStatus): string => {
 };
 
 const fromBackendStatus = (status: unknown): RequestStatus => {
+  if (status === "in_review") return "in_review";
   if (status === "accepted") return "selected";
   if (status === "completed") return "delivered";
   if (status === "rejected") return "rejected";
