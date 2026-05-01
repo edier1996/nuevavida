@@ -96,6 +96,11 @@ const Header = () => {
                   Dashboard
                 </Button>
               </Link>
+              <Link to="/mis-solicitudes">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  Mis solicitudes
+                </Button>
+              </Link>
               {user?.role === 'admin' && (
                 <Link to="/admin">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
@@ -170,6 +175,7 @@ const Header = () => {
                     <Link to="/favoritos" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Favoritos</Link>
                     <Link to="/mensajes" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Mensajes</Link>
                     <Link to="/dashboard" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Dashboard</Link>
+                    <Link to="/mis-solicitudes" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Mis solicitudes</Link>
                     <Link to="/perfil" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Mi Perfil</Link>
                   </>
                 )}
