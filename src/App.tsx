@@ -30,6 +30,8 @@ import Cart from "./pages/Cart.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
 import WorkerDashboard from "./pages/WorkerDashboard.tsx";
 import MyRequests from "./pages/MyRequests.tsx";
+import ForgotPassword from "./pages/ForgotPassword.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -68,6 +70,8 @@ const App = () => (
             <Route path="/privacidad" element={<Privacy />} />
             <Route path="/terminos" element={<Terms />} />
             <Route path="/cookies" element={<Cookies />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
