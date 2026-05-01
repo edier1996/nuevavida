@@ -11,7 +11,7 @@ const Footer = () => {
             <Link to="/" className="flex items-center gap-3">
               <img src={logo} alt="Nueva Vida" className="h-14 w-14 rounded-2xl border border-white/30 object-cover" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-white/70">Fundacion 1327</p>
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-white/70">Comunidad Nueva Vida</p>
                 <span className="text-xl font-semibold tracking-tight text-white">Nueva Vida</span>
               </div>
             </Link>
@@ -32,7 +32,7 @@ const Footer = () => {
             </ul>
           </div>
           <div>
-            <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-white/70">Fundacion</h4>
+            <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-white/70">Comunidad</h4>
             <ul className="space-y-2 text-sm text-white/82">
               <li><Link to="/sobre" className="transition-colors hover:text-white">Sobre nosotros</Link></li>
               <li><Link to="/contacto" className="transition-colors hover:text-white">Contacto</Link></li>

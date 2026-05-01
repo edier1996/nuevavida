@@ -46,7 +46,7 @@ const Header = () => {
         <Link to="/" className="flex items-center gap-3 rounded-2xl border border-border/70 bg-white/80 px-2.5 py-2 transition-transform duration-200 hover:-translate-y-0.5">
           <img src={logo} alt="Nueva Vida" className="h-12 w-12 rounded-2xl object-cover" />
           <div className="hidden sm:block">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/75">Fundacion 1327</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/75">Comunidad activa</p>
             <p className="text-base font-bold text-foreground">Nueva Vida</p>
           </div>
         </Link>

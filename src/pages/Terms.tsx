@@ -21,7 +21,7 @@ const Terms = () => (
         <p className="font-semibold">Comisión:</p>
         <p>
           Se aplicará una comisión del <strong>5%</strong> sobre las ventas realizadas, destinada al
-          sostenimiento de la fundación. No se aplicarán comisiones a los objetos donados.
+          sostenimiento de la plataforma. No se aplicarán comisiones a los objetos donados.
         </p>
 
         <p className="font-semibold">Marco legal:</p>
