@@ -88,46 +88,62 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(JSON.parse(storedUserRaw));
     }
 
-    const DEFAULT_ADMIN = {
-      id: "admin-1",
-      name: "Administrador",
-      email: "nuevavida1327@gmail.com",
-      phone: "",
-      city: "",
-      address: "",
-      role: "admin" as const,
-      passwordHash: "3ce2d89fc21e170599929e3893fa79a82ce7577c27abc3d0704ae8d1b8287b05", // SHA-256 de "nueva2026"
-      passwordStrength: "strong" as const,
-    };
+    const initDefaultUsers = async () => {
+      const hashStr = async (password: string): Promise<string> => {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        return Array.from(new Uint8Array(hashBuffer))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+      };
 
-    const DEFAULT_WORKER = {
-      id: "worker-1",
-      name: "Soporte",
-      email: "worker@nuevavida.com",
-      phone: "",
-      city: "",
-      address: "",
-      role: "worker" as const,
-      passwordHash: "3ce2d89fc21e170599929e3893fa79a82ce7577c27abc3d0704ae8d1b8287b05", // SHA-256 de "nueva2026"
-      passwordStrength: "strong" as const,
-    };
+      const adminHash = await hashStr("nevavida13272026");
+      const workerHash = await hashStr("nevavida13272026");
 
-    const users: StoredUser[] = JSON.parse(localStorage.getItem("users") || "[]");
+      const DEFAULT_ADMIN = {
+        id: "admin-1",
+        name: "Administrador",
+        email: "nuevavida1327@gmail.com",
+        phone: "",
+        city: "",
+        address: "",
+        role: "admin" as const,
+        passwordHash: adminHash, // SHA-256 de "nevavida13272026"
+        passwordStrength: "strong" as const,
+      };
 
-    // Eliminamos cualquier admin previo y dejamos solo el admin por defecto con las nuevas credenciales
-    const nonAdminUsers = users.filter((u) => u.role !== "admin" && u.id !== DEFAULT_ADMIN.id);
-    const nonWorkerUsers = nonAdminUsers.filter((u) => u.role !== "worker" && u.id !== DEFAULT_WORKER.id);
-    const updatedUsers: StoredUser[] = [...nonWorkerUsers, DEFAULT_ADMIN, DEFAULT_WORKER];
-    localStorage.setItem("users", JSON.stringify(updatedUsers));
+      const DEFAULT_WORKER = {
+        id: "worker-1",
+        name: "Soporte",
+        email: "worker@nuevavida.com",
+        phone: "",
+        city: "",
+        address: "",
+        role: "worker" as const,
+        passwordHash: workerHash, // SHA-256 de "nevavida13272026"
+        passwordStrength: "strong" as const,
+      };
 
-    // Si el usuario autenticado es/era admin, sincronizarlo
-    if (storedUserRaw) {
-      const parsedStoredUser: StoredUser = JSON.parse(storedUserRaw);
-      if (parsedStoredUser.role === "admin" || parsedStoredUser.id === DEFAULT_ADMIN.id) {
-        localStorage.setItem("user", JSON.stringify(DEFAULT_ADMIN));
-        setUser(DEFAULT_ADMIN);
+      const users: StoredUser[] = JSON.parse(localStorage.getItem("users") || "[]");
+
+      // Eliminamos cualquier admin previo y dejamos solo el admin por defecto con las nuevas credenciales
+      const nonAdminUsers = users.filter((u) => u.role !== "admin" && u.id !== DEFAULT_ADMIN.id);
+      const nonWorkerUsers = nonAdminUsers.filter((u) => u.role !== "worker" && u.id !== DEFAULT_WORKER.id);
+      const updatedUsers: StoredUser[] = [...nonWorkerUsers, DEFAULT_ADMIN, DEFAULT_WORKER];
+      localStorage.setItem("users", JSON.stringify(updatedUsers));
+
+      // Si el usuario autenticado es/era admin, sincronizarlo
+      if (storedUserRaw) {
+        const parsedStoredUser: StoredUser = JSON.parse(storedUserRaw);
+        if (parsedStoredUser.role === "admin" || parsedStoredUser.id === DEFAULT_ADMIN.id) {
+          localStorage.setItem("user", JSON.stringify(DEFAULT_ADMIN));
+          setUser(DEFAULT_ADMIN);
+        }
       }
-    }
+    };
+
+    initDefaultUsers();
   }, []);
 
   const isPasswordStrong = (password: string) => {
