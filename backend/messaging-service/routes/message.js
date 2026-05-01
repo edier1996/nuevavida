@@ -15,6 +15,13 @@ router.post("/create", async (req, res) => {
     // Fields to create a new conversation when conversationId is not provided
     participantIds,
     participantNames,
+    productId,
+    orderId,
+  } = req.body
+
+  try {
+    if (!senderId || typeof senderId !== "string" || senderId.trim() === "") {
+      return res.status(400).json({ error: "senderId must be a non-empty string" })
     }
     if (!senderName || typeof senderName !== "string" || senderName.trim() === "") {
       return res.status(400).json({ error: "senderName must be a non-empty string" })
