@@ -63,18 +63,12 @@ const HeroSection = () => {
           transition={{ duration: 0.6, delay: 0.15, ease: [0.2, 0, 0, 1] }}
           className="relative"
         >
-          <div className="overflow-hidden rounded-[2rem] border border-white/70 card-shadow">
+          <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-[#f8f6f0] card-shadow">
             <img
               src={heroImage}
               alt="Ilustracion de donacion comunitaria con entrega de objetos a familias"
-              className="h-full min-h-[420px] w-full object-cover"
+              className="h-full min-h-[420px] w-full object-contain p-3 md:p-4"
             />
-          </div>
-          <div className="absolute -bottom-6 left-6 max-w-xs rounded-[1.5rem] border border-white/80 bg-white/88 p-5 card-shadow">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Proceso claro</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Publicas un objeto, recibes solicitudes y eliges con acompanamiento cuando se requiere priorizar casos.
-            </p>
           </div>
         </motion.div>
       </div>
