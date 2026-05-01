@@ -2,6 +2,8 @@ const express = require("express")
 const { User } = require("../db")
 const argon2 = require("argon2")
 const jwt = require("jsonwebtoken")
+const crypto = require("crypto")
+const { sendPasswordResetEmail } = require("../config/email")
 
 const router = express.Router()
 
@@ -109,5 +111,72 @@ router.put("/:id", auth, async (req, res) => {
     res.status(500).send("Server error")
   }
 })
+
+// Request a password reset link
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      // Don't reveal if email exists for security
+      return res.json({ msg: "Si el email existe, recibirás un enlace para recuperar tu contraseña" });
+    }
+
+    // Generate reset token (random 32 char hex string)
+    const resetToken = crypto.randomBytes(16).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+
+    await User.update(
+      { resetToken, resetTokenExpiry },
+      { where: { id: user.id } }
+    );
+
+    // Send email
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&email=${email}`;
+    await sendPasswordResetEmail(email, resetToken, resetLink);
+
+    res.json({ msg: "Si el email existe, recibirás un enlace para recuperar tu contraseña" });
+  } catch (error) {
+    console.error("Error in forgot-password:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reset password using a valid token
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+
+    if (!email || !token || !newPassword) {
+      return res.status(400).json({ error: "Email, token, and newPassword are required" });
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user || user.resetToken !== token) {
+      return res.status(400).json({ error: "Invalid or expired reset token" });
+    }
+
+    if (new Date() > user.resetTokenExpiry) {
+      return res.status(400).json({ error: "Reset token has expired" });
+    }
+
+    // Update password and clear reset token
+    // individualHooks: true ensures the beforeUpdate hook runs to hash the new password
+    await User.update(
+      { password: newPassword, resetToken: null, resetTokenExpiry: null },
+      { where: { id: user.id }, individualHooks: true }
+    );
+
+    res.json({ msg: "Password reset successfully" });
+  } catch (error) {
+    console.error("Error in reset-password:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 module.exports = router

@@ -26,6 +26,14 @@ module.exports = (sequelize) => {
       defaultValue: 'user',
       allowNull: false,
     },
+    resetToken: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    resetTokenExpiry: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   }, {
     tableName: 'users',
     hooks: {
