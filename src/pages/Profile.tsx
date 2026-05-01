@@ -108,6 +108,12 @@ const Profile = () => {
                 >
                   Mensajes
                 </Link>
+                <Link
+                  to="/mis-solicitudes"
+                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-foreground shadow-sm hover:bg-gray-100"
+                >
+                  Mis solicitudes
+                </Link>
               </div>
             </div>
           </div>
@@ -193,6 +199,12 @@ const Profile = () => {
                   className="rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary/90"
                 >
                   Ver mensajes
+                </Link>
+                <Link
+                  to="/mis-solicitudes"
+                  className="rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary/90"
+                >
+                  Ver mis solicitudes
                 </Link>
               </div>
             </div>
