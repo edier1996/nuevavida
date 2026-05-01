@@ -60,7 +60,7 @@ const AdminDashboard = () => {
       return;
     }
 
-    const success = await createUser(
+    const result = await createUser(
       newUser.name,
       newUser.email,
       newUser.password,
@@ -70,7 +70,7 @@ const AdminDashboard = () => {
       newUser.role
     );
 
-    if (success) {
+    if (result.success) {
       // Recargar lista
       const storedUsers = JSON.parse(localStorage.getItem("users") || "[]");
       setUsers(storedUsers);
@@ -89,9 +89,25 @@ const AdminDashboard = () => {
         role: 'user'
       });
     } else {
+      const rawError = result.error || "";
+      let description: string;
+      if (rawError.toLowerCase().includes("already exists") || rawError.toLowerCase().includes("ya existe")) {
+        description = "El email ya está registrado. Usa otro correo electrónico.";
+      } else if (
+        rawError.toLowerCase().includes("fetch") ||
+        rawError.toLowerCase().includes("network") ||
+        rawError.toLowerCase().includes("failed to fetch") ||
+        rawError.toLowerCase().includes("connect")
+      ) {
+        description = "No se pudo conectar al servidor. Verifica la conexión e inténtalo de nuevo.";
+      } else if (rawError) {
+        description = rawError;
+      } else {
+        description = "No se pudo crear el usuario. Verifica que el email no esté en uso.";
+      }
       toast({
         title: "Error",
-        description: "No se pudo crear el usuario. Verifica que el email no estÃ© en uso.",
+        description,
         variant: "destructive",
       });
     }

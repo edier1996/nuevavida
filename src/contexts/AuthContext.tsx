@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createUserInDatabase } from "@/lib/user-api";
 
 interface User {
   id: string;
@@ -60,7 +61,7 @@ interface AuthContextType {
     city: string,
     address: string,
     role: 'admin' | 'worker' | 'user'
-  ) => Promise<boolean>;
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -322,34 +323,40 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     city: string,
     address: string,
     role: 'admin' | 'worker' | 'user'
-  ): Promise<boolean> => {
+  ): Promise<{ success: boolean; error?: string }> => {
     if (!user || user.role !== 'admin') {
-      return false; // Solo admin puede crear usuarios
+      return { success: false, error: "Solo el administrador puede crear usuarios." };
     }
 
-    const users: StoredUser[] = JSON.parse(localStorage.getItem("users") || "[]");
-    if (users.some((u) => u.email === email)) {
-      return false; // Email ya existe
+    // Save to the database first so the user persists across devices and cache clears.
+    const dbResult = await createUserInDatabase(name, email, password, phone, city, address, role);
+    if (!dbResult.success) {
+      return { success: false, error: dbResult.error };
     }
 
-    // Permitimos contraseñas débiles creadas por admin para no bloquear el alta.
-    const passwordHash = await hashPassword(password);
-    const newUser = {
-      id: Date.now().toString(),
-      name,
-      email,
-      phone,
-      city,
-      address,
-      role,
-      passwordHash,
-      passwordStrength: "strong",
-    };
+    // Also keep a local copy for admin/worker roles so they can log in via the
+    // localStorage-based auth path used for internal accounts.
+    if (role === 'admin' || role === 'worker') {
+      const users: StoredUser[] = JSON.parse(localStorage.getItem("users") || "[]");
+      if (!users.some((u) => u.email === email)) {
+        const passwordHash = await hashPassword(password);
+        const newUser: StoredUser = {
+          id: dbResult.userId || Date.now().toString(),
+          name,
+          email,
+          phone,
+          city,
+          address,
+          role,
+          passwordHash,
+          passwordStrength: "strong",
+        };
+        users.push(newUser);
+        localStorage.setItem("users", JSON.stringify(users));
+      }
+    }
 
-    users.push(newUser);
-    localStorage.setItem("users", JSON.stringify(users));
-
-    return true;
+    return { success: true };
   };
 
   const logout = () => {
