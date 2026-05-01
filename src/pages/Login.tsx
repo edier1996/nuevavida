@@ -134,6 +134,11 @@ const Login = () => {
             >
               {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
             </button>
+            {mode === "login" && (
+              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            )}
           </form>
 
           <div className="mt-6 flex items-center justify-between text-sm text-muted-foreground">
