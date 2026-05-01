@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Recycle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import heroImage from "@/assets/hero-image.jpg";
+import heroImage from "@/assets/hero-community.svg";
 
 const HeroSection = () => {
   return (
@@ -25,7 +25,7 @@ const HeroSection = () => {
             Lo que ya no usas puede convertirse en alivio para otra familia.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground text-pretty">
-            Publica objetos, recibe solicitudes con criterio social y entrégalos a quien realmente los necesita. Sin ventas entre usuarios, con impacto real en comunidad.
+            Publica objetos, recibe solicitudes con criterio social y entregalos a quien realmente los necesita. Sin ventas entre usuarios, con impacto real en la comunidad.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/publicar">
@@ -66,12 +66,12 @@ const HeroSection = () => {
           <div className="overflow-hidden rounded-[2rem] border border-white/70 card-shadow">
             <img
               src={heroImage}
-              alt="Personas intercambiando objetos en comunidad"
+              alt="Ilustracion de donacion comunitaria con entrega de objetos a familias"
               className="h-full min-h-[420px] w-full object-cover"
             />
           </div>
           <div className="absolute -bottom-6 left-6 max-w-xs rounded-[1.5rem] border border-white/80 bg-white/88 p-5 card-shadow">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Como funciona</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Proceso claro</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Publicas un objeto, recibes solicitudes y eliges con acompanamiento cuando se requiere priorizar casos.
             </p>
