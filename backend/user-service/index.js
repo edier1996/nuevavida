@@ -1,7 +1,7 @@
 const express = require("express")
 const dotenv = require("dotenv")
 const cors = require("cors")
-const { sequelize, User } = require('./db')
+const { sequelize, User, TempRegistration } = require('./db')
 const userRoutes = require("./routes/user")
 const { sendPasswordResetEmail, sendVerificationEmail } = require('./config/email')
 

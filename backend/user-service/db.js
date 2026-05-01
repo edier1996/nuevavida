@@ -10,5 +10,6 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
 })
 
 const User = require('./models/user')(sequelize)
+const TempRegistration = require('./models/tempRegistration')(sequelize)
 
-module.exports = { sequelize, User }
+module.exports = { sequelize, User, TempRegistration }
