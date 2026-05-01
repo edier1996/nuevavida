@@ -52,11 +52,11 @@ interface AuthContextType {
     name: string,
     email: string,
     password: string,
-    phone: string,
-    city: string,
-    address: string,
-    role?: 'admin' | 'worker' | 'user'
-  ) => Promise<{ success: boolean; error?: string }>;
+    phone?: string,
+    city?: string,
+    address?: string
+  ) => Promise<{ success: boolean; error?: string; email?: string }>;
+  verifyEmail: (email: string, verificationCode: string) => Promise<{ success: boolean; error?: string; token?: string }>;
   createUser: (
     name: string,
     email: string,
@@ -240,16 +240,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     name: string,
     email: string,
     password: string,
-    phone: string,
-    city: string,
-    address: string,
-    role: 'admin' | 'worker' | 'user' = 'user'
-  ): Promise<{ success: boolean; error?: string }> => {
-    // Registro SQL para cuentas de usuario final
-    if (role !== "user") {
-      return { success: false, error: "Solo se permite el registro de usuarios finales." };
-    }
-
+    phone?: string,
+    city?: string,
+    address?: string
+  ): Promise<{ success: boolean; error?: string; email?: string }> => {
     if (!isPasswordStrong(password)) {
       return {
         success: false,
@@ -259,73 +253,72 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name, email, password }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/register`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        }
+      );
 
       if (!response.ok) {
-        let apiError = `Error ${response.status}`;
-        try {
-          const raw = await response.text();
-          try {
-            const data = JSON.parse(raw);
-            apiError =
-              (typeof data?.error === "string" && data.error) ||
-              (typeof data?.message === "string" && data.message) ||
-              (typeof data?.msg === "string" && data.msg) ||
-              `Error ${response.status}: ${raw.slice(0, 200)}`;
-          } catch {
-            if (raw.includes("<!DOCTYPE") || raw.includes("Cannot GET") || raw.includes("Not Found")) {
-              apiError =
-                "El frontend no apunta al servicio de usuarios. Revisa VITE_USERS_API_BASE_URL en Railway.";
-            } else {
-              apiError = `Error ${response.status}: ${raw.slice(0, 200)}`;
-            }
-          }
-        } catch {
-          apiError = `Error ${response.status} al crear cuenta`;
+        const error = await response.json();
+        return { success: false, error: error.error || "Registration failed" };
+      }
+
+      // Return email so frontend can redirect to verification page
+      return { success: true, email };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Registration failed",
+      };
+    }
+  };
+
+  const verifyEmail = async (
+    email: string,
+    verificationCode: string
+  ): Promise<{ success: boolean; error?: string; token?: string }> => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/verify-email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, verificationCode }),
         }
-        return { success: false, error: apiError };
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.error || "Verification failed" };
       }
 
       const data = await response.json();
-      const backendRole = data.user?.role;
-      const safeRole: User["role"] =
-        backendRole === "admin" || backendRole === "worker" ? backendRole : "user";
 
-      const registeredUser: User = {
-        id: String(data.user?.id || data.userId || ""),
-        name: data.user?.name || name,
-        email: data.user?.email || email,
-        phone,
-        city,
-        address,
-        role: safeRole,
-      };
-
-      if (!registeredUser.id) {
-        return { success: false, error: "Respuesta inválida del servidor al registrar." };
-      }
-
+      // Save token and user info
       if (data.token) {
-        localStorage.setItem("auth_token", data.token);
+        localStorage.setItem("token", data.token);
+
+        const user: User = {
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          role: data.user.role,
+        };
+
+        setUser(user);
+        localStorage.setItem("user", JSON.stringify(user));
       }
 
-      localStorage.setItem(
-        `user_profile_${registeredUser.id}`,
-        JSON.stringify({ phone, city, address })
-      );
-
-      setUser(registeredUser);
-      localStorage.setItem("user", JSON.stringify(registeredUser));
-      return { success: true };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { success: false, error: `No se pudo conectar: ${msg}` };
+      return { success: true, token: data.token };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Verification failed",
+      };
     }
   };
 
@@ -384,6 +377,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     user,
     login,
     register,
+    verifyEmail,
     createUser,
     logout,
     isAuthenticated: !!user,

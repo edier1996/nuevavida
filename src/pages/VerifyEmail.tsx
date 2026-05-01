@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const VerifyEmail = () => {
   const [verificationCode, setVerificationCode] = useState("");
@@ -12,6 +13,7 @@ const VerifyEmail = () => {
   const [isResending, setIsResending] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { verifyEmail } = useAuth();
   const email = location.state?.email || "";
 
   if (!email) {
@@ -43,26 +45,18 @@ const VerifyEmail = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_USERS_API_BASE_URL}/api/users/verify-email`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, verificationCode }),
-        }
-      );
+      const result = await verifyEmail(email, verificationCode);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error al verificar el email");
+      if (!result.success) {
+        throw new Error(result.error || "Error al verificar el email");
       }
 
       toast({
         title: "Éxito",
-        description: "Email verificado correctamente",
+        description: "Email verificado correctamente. Cuenta creada!",
       });
 
-      setTimeout(() => navigate("/login"), 2000);
+      setTimeout(() => navigate("/"), 2000);
     } catch (error) {
       toast({
         title: "Error",
