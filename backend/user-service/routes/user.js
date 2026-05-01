@@ -22,14 +22,16 @@ const auth = (req, res, next) => {
 // Register a new user
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body
+    const { name, email, password, role } = req.body
 
     let user = await User.findOne({ where: { email } })
     if (user) {
       return res.status(400).json({ error: "User already exists" })
     }
 
-    user = await User.create({ name, email, password })
+    const normalizedRole = ["user", "admin", "worker"].includes(role) ? role : "user"
+
+    user = await User.create({ name, email, password, role: normalizedRole })
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
@@ -41,7 +43,7 @@ router.post("/register", async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: "user",
+        role: user.role,
       },
     })
   } catch (error) {
@@ -73,7 +75,7 @@ router.post("/login", async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: "user",
+        role: user.role,
       },
     })
   } catch (error) {

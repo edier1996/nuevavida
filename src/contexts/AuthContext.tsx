@@ -201,11 +201,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       const data = await response.json();
+      const backendRole = data.user?.role;
+      const safeRole: User["role"] =
+        backendRole === "admin" || backendRole === "worker" ? backendRole : "user";
+
       const backendUser: User = {
         id: String(data.user?.id || data.userId || ""),
         name: data.user?.name || email.split("@")[0],
         email: data.user?.email || email,
-        role: "user",
+        role: safeRole,
       };
 
       if (!backendUser.id) {
@@ -287,6 +291,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       const data = await response.json();
+      const backendRole = data.user?.role;
+      const safeRole: User["role"] =
+        backendRole === "admin" || backendRole === "worker" ? backendRole : "user";
+
       const registeredUser: User = {
         id: String(data.user?.id || data.userId || ""),
         name: data.user?.name || name,
@@ -294,7 +302,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         phone,
         city,
         address,
-        role: "user",
+        role: safeRole,
       };
 
       if (!registeredUser.id) {
