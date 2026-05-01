@@ -12,7 +12,7 @@ dotenv.config()
 // CORS configuration
 const allowedOrigins = [
   "https://nuevavida1327.com",
-  "https://nuevavida-production.up.railway.app",
+  "https://www.nuevavida1327.com",
   "http://localhost:8080",
   "http://localhost:5173",
 ]
