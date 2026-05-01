@@ -1,3 +1,5 @@
+import { getMessagingApiBaseUrl } from '@/config/api';
+
 // ─── Data shapes matching the backend MySQL models ───────────────────────────
 
 export interface Conversation {
@@ -21,28 +23,7 @@ export interface Message {
 
 // ─── Base URL resolution ──────────────────────────────────────────────────────
 
-const resolveMessagingApiBaseUrl = () => {
-  const raw =
-    import.meta.env.VITE_MESSAGING_API_BASE_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    import.meta.env.VITE_API_URL ||
-    "";
-
-  const trimmed = raw.trim().replace(/\/+$/, "");
-  const normalized = trimmed.endsWith("/api") ? trimmed.slice(0, -4) : trimmed;
-
-  if (
-    typeof window !== "undefined" &&
-    window.location.protocol === "https:" &&
-    normalized.startsWith("http://")
-  ) {
-    return normalized.replace("http://", "https://");
-  }
-
-  return normalized;
-};
-
-const API_BASE_URL = resolveMessagingApiBaseUrl();
+const API_BASE_URL = getMessagingApiBaseUrl();
 
 const getAuthHeaders = (): HeadersInit => {
   const token = localStorage.getItem("auth_token");
