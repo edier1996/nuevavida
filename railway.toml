@@ -13,10 +13,9 @@ builder = "nixpacks"
 #   build_command = "npm run build"
 #   start_command = "npm run preview"
 
-# [deploy]
-# # Configuración de deploy (opcional)
-# numReplicas = 1
-# restartPolicyType = "on-failure"
-# restartPolicyMaxRetries = 3
+[deploy]
+# Inject VITE_MESSAGING_API_BASE_URL from Railway env vars at runtime, then
+# start the Vite preview server.
+startCommand = "sh -c 'sed -i \"s|__MESSAGING_API_BASE_URL__|${VITE_MESSAGING_API_BASE_URL}|g\" dist/index.html && npm run preview -- --host 0.0.0.0 --port $PORT'"
 
 # Para backend services, Railway detectará automáticamente Express.js
