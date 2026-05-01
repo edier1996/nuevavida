@@ -26,6 +26,19 @@ module.exports = (sequelize) => {
       defaultValue: 'user',
       allowNull: false,
     },
+    isEmailVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+    emailVerificationCode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    emailVerificationCodeExpiry: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   }, {
     tableName: 'users',
     hooks: {
