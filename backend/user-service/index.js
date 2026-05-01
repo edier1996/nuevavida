@@ -38,6 +38,18 @@ app.use(express.json())
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions)) // Handle preflight requests
 
+// CORS debugging middleware
+app.use((req, res, next) => {
+  const origin = req.get('origin');
+  console.log(`📍 Request from origin: ${origin || 'no origin'}`);
+  console.log(`📍 Request method: ${req.method}`);
+  console.log(`📍 Request path: ${req.path}`);
+  next();
+});
+
+// routes
+app.use("/api/users", userRoutes)
+
 // Seed the default admin user if it doesn't already exist
 const initAdmin = async () => {
   try {
@@ -78,6 +90,3 @@ sequelize.authenticate()
   .catch((err) => {
     console.error("🚫 Failed to connect to Database -> User Service", err)
   })
-
-// routes
-app.use("/api/users", userRoutes)
