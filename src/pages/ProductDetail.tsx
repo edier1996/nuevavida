@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { mockProducts, type Product } from "@/lib/mock-data";
 import { fetchProducts } from "@/lib/products-api";
 import { addRequest, type NeedLevel } from "@/lib/requests";
+import { sendMessage as sendMessageApi } from "@/lib/messaging-api";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, ChevronLeft, ChevronRight, X, ZoomIn } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -14,20 +15,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-
-interface StoredMessage {
-  id?: string;
-  from: string;
-  to: string;
-  fromName?: string;
-  toName?: string;
-  productId: string;
-  subject?: string;
-  content: string;
-  image?: string;
-  timestamp?: string;
-  read?: boolean;
-}
 
 const PLATFORM_USER_ID = "platform";
 const PLATFORM_USER_NAME = "Nueva Vida (Plataforma)";
@@ -152,50 +139,29 @@ const ProductDetail = () => {
 
     const requestId = created.id;
 
-    const messages = JSON.parse(localStorage.getItem("messages") || "[]") as StoredMessage[];
-    messages.push({
-      id: requestId,
-      from: user.id,
-      to: workerId,
-      fromName: user.name,
-      toName: workerName,
-      productId: product.id,
-      subject: `Solicitud de ${user.name} - ${product.title}`,
-      content: messageContent,
-      image: evidence || firstImageUrl,
-      timestamp: now,
-      read: false,
-    });
-
     try {
-      localStorage.setItem("messages", JSON.stringify(messages));
-      localStorage.setItem("messages_backup", JSON.stringify(messages));
-    } catch {
-      const trimmed = messages.slice(-200);
-      localStorage.setItem("messages", JSON.stringify(trimmed));
-      localStorage.setItem("messages_backup", JSON.stringify(trimmed));
-    }
+      const recipientId =
+        (product.sellerId && String(product.sellerId).trim()) ||
+        (product.sellerEmail && String(product.sellerEmail).trim()) ||
+        workerId;
 
-    const existingInquiries = JSON.parse(localStorage.getItem("worker_inquiries") || "[]");
-    const newInquiry = {
-      id: requestId,
-      transactionId: requestId,
-      buyerId: user.id,
-      sellerId: product.sellerId || product.sellerName,
-      sellerName: product.sellerName,
-      sellerEmail: product.sellerEmail,
-      customerName: user.name,
-      customerEmail: user.email,
-      customerPhone: user.phone,
-      productId: product.id,
-      productTitle: product.title,
-      message: messageContent,
-      status: "pending",
-      createdAt: now,
-      score: created.score,
-      needLevel: created.needLevel,
-    };
-    localStorage.setItem("worker_inquiries", JSON.stringify([newInquiry, ...existingInquiries]));
+      await sendMessageApi({
+        participantIds: [user.id, recipientId],
+        senderId: user.id,
+        senderName: user.name,
+        content: messageContent,
+        productId: product.id,
+        orderId: requestId,
+      });
+    } catch (err) {
+      console.error("Error al crear conversación inicial:", err);
+      toast({
+        title: "Solicitud creada",
+        description:
+          "La solicitud quedó guardada, pero no se pudo abrir el chat automáticamente.",
+        variant: "default",
+      });
+    }
 
     setShowRequestForm(false);
     setFormError("");
@@ -209,7 +175,7 @@ const ProductDetail = () => {
     setRequesterCity(user.city || "");
     setAcceptPolicy(false);
 
-    navigate(`/mensajes?product=${product.id}`);
+    navigate(`/mis-solicitudes?request=${requestId}`);
   };
 
   const nextImage = () => {

@@ -23,6 +23,60 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    requesterPhone: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    requesterCity: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    productTitle: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    productCity: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    householdSize: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    needLevel: {
+      type: DataTypes.ENUM('alta', 'media', 'baja'),
+      allowNull: true,
+      defaultValue: 'media',
+    },
+    reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    intendedUse: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    pickupWindow: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    extraNotes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    evidence: {
+      type: DataTypes.TEXT('long'),
+      allowNull: true,
+    },
+    score: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
+    },
+    scoreBreakdown: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
     donorId: {
       type: DataTypes.UUID,
       allowNull: true,

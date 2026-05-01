@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import NotificationsDropdown from "@/components/NotificationsDropdown";
 import logo from "@/assets/logo.jpeg";
+import { fetchConversations, fetchConversationMessages } from "@/lib/messaging-api";
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -16,17 +17,24 @@ const Header = () => {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    const updateUnreadCount = () => {
-      const messages = JSON.parse(localStorage.getItem("messages") || "[]");
-      const unread = messages.filter((msg: any) =>
-        (msg.to === user.id || msg.to === user.email) && !msg.read
-      ).length;
-      setUnreadMessages(unread);
+    const updateUnreadCount = async () => {
+      try {
+        const conversations = await fetchConversations(user.id);
+        const bundles = await Promise.all(
+          conversations.map((conv) => fetchConversationMessages(conv.id).catch(() => ({ messages: [] })))
+        );
+        const unread = bundles.reduce((acc, bundle) => {
+          const list = Array.isArray(bundle.messages) ? bundle.messages : [];
+          return acc + list.filter((msg) => msg.senderId !== user.id && !msg.read).length;
+        }, 0);
+        setUnreadMessages(unread);
+      } catch {
+        setUnreadMessages(0);
+      }
     };
 
     updateUnreadCount();
-    // Actualizar cada 5 segundos
-    const interval = setInterval(updateUnreadCount, 5000);
+    const interval = setInterval(updateUnreadCount, 10000);
 
     return () => clearInterval(interval);
   }, [isAuthenticated, user]);

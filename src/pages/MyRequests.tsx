@@ -1,167 +1,59 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.jpeg";
-import { mockProducts, type Product } from "@/lib/mock-data";
+import { getRequestsByUser, type ProductRequest } from "@/lib/requests";
+import {
+  fetchConversations,
+  fetchConversationMessages,
+  sendMessage as sendMessageApi,
+  type Conversation,
+  type Message,
+} from "@/lib/messaging-api";
 
-const WORKER_INQUIRIES_KEY = "worker_inquiries";
 const PLATFORM_USER_ID = "platform";
-const PLATFORM_USER_NAME = "Nueva Vida (Plataforma)";
 
-interface Inquiry {
-  id: string;
-  buyerId?: string;
-  customerEmail: string;
-  customerName: string;
-  customerPhone?: string;
-  productId: string;
-  productTitle: string;
-  productCity?: string;
-  message: string;
-  status: "pending" | "in-progress" | "resolved";
-  createdAt: string;
-  assignedTo?: string;
-  assignedToName?: string;
-  sellerId?: string;
-  sellerName?: string;
-  sellerEmail?: string;
-}
-
-interface StoredMessage {
-  id: string;
-  from: string;
-  to: string;
-  fromName?: string;
-  toName?: string;
-  productId?: string;
-  subject?: string;
-  content: string;
-  timestamp: string;
-  read: boolean;
-}
-
-const statusColors: Record<Inquiry["status"], string> = {
+const statusColors: Record<ProductRequest["status"], string> = {
   pending: "bg-yellow-500",
-  "in-progress": "bg-blue-500",
-  resolved: "bg-green-600",
+  in_review: "bg-blue-500",
+  selected: "bg-green-600",
+  rejected: "bg-red-600",
+  delivered: "bg-emerald-700",
+};
+
+const statusLabel = (status: ProductRequest["status"]) => {
+  switch (status) {
+    case "pending":
+      return "Pendiente";
+    case "in_review":
+      return "En revisión";
+    case "selected":
+      return "Seleccionado";
+    case "rejected":
+      return "Rechazado";
+    case "delivered":
+      return "Entregado";
+    default:
+      return status;
+  }
 };
 
 const MyRequests = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [requests, setRequests] = useState<Inquiry[]>([]);
-  const [messages, setMessages] = useState<StoredMessage[]>([]);
+  const [searchParams] = useSearchParams();
+
+  const [requests, setRequests] = useState<ProductRequest[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [messagesByConversation, setMessagesByConversation] = useState<Record<string, Message[]>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
-  const [allProducts, setAllProducts] = useState<Product[]>(mockProducts);
-
-  // Cargar datos base
-  useEffect(() => {
-    if (!isAuthenticated || !user) return;
-
-    const storedInquiries: Inquiry[] = JSON.parse(localStorage.getItem(WORKER_INQUIRIES_KEY) || "[]");
-    const mine = storedInquiries
-      .filter(
-        (inq) =>
-          inq.buyerId === user.id ||
-          inq.customerEmail === user.email ||
-          inq.customerPhone === user.phone
-      )
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    setRequests(mine);
-    setSelectedId((prev) => prev || mine[0]?.id || null);
-
-    const storedMessages = localStorage.getItem("messages");
-    const backupMessages = localStorage.getItem("messages_backup");
-    const parsedMessages: StoredMessage[] = storedMessages
-      ? JSON.parse(storedMessages)
-      : backupMessages
-      ? JSON.parse(backupMessages)
-      : [];
-    setMessages(parsedMessages);
-
-    const userProducts = JSON.parse(localStorage.getItem("products") || "[]");
-    setAllProducts([...mockProducts, ...userProducts]);
-  }, [isAuthenticated, user]);
-
-  const persistMessages = useCallback((list: StoredMessage[]) => {
-    const serialized = JSON.stringify(list);
-    try {
-      localStorage.setItem("messages", serialized);
-      localStorage.setItem("messages_backup", serialized);
-    } catch {
-      const trimmed = list.slice(-200);
-      const serializedTrimmed = JSON.stringify(trimmed);
-      try {
-        localStorage.setItem("messages", serializedTrimmed);
-        localStorage.setItem("messages_backup", serializedTrimmed);
-      } catch {
-        console.error("No se pudieron guardar los mensajes (cuota).");
-      }
-    }
-  }, []);
-
-  const selectedRequest = useMemo(
-    () => requests.find((r) => r.id === selectedId) || null,
-    [requests, selectedId]
-  );
-
-  const selectedMessages = useMemo(() => {
-    if (!selectedRequest || !user) return [];
-
-    const otherId =
-      selectedRequest.assignedTo ||
-      selectedRequest.sellerId ||
-      selectedRequest.sellerEmail ||
-      PLATFORM_USER_ID;
-
-    return messages
-      .filter((msg) => {
-        const msgProduct = msg.productId || "general";
-        const targetProduct = selectedRequest.productId || "general";
-        if (msgProduct !== targetProduct) return false;
-        const involvesUser = msg.from === user.id || msg.from === user.email || msg.to === user.id || msg.to === user.email;
-        const involvesOther = msg.from === otherId || msg.to === otherId;
-        return involvesUser && involvesOther;
-      })
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  }, [messages, selectedRequest, user]);
-
-  const sendMessage = () => {
-    if (!newMessage.trim() || !selectedRequest || !user) return;
-
-    const otherId =
-      selectedRequest.assignedTo ||
-      selectedRequest.sellerId ||
-      selectedRequest.sellerEmail ||
-      PLATFORM_USER_ID;
-    const otherName =
-      selectedRequest.assignedToName ||
-      selectedRequest.sellerName ||
-      PLATFORM_USER_NAME;
-
-    const message: StoredMessage = {
-      id: Date.now().toString(),
-      from: user.id,
-      to: otherId,
-      fromName: user.name,
-      toName: otherName,
-      productId: selectedRequest.productId,
-      subject: `Seguimiento solicitud ${selectedRequest.productTitle}`,
-      content: newMessage.trim(),
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-
-    const updated = [...messages, message];
-    setMessages(updated);
-    persistMessages(updated);
-    setNewMessage("");
-  };
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -169,9 +61,110 @@ const MyRequests = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  if (!isAuthenticated || !user) {
-    return null;
-  }
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const load = async () => {
+      setIsLoading(true);
+      setError("");
+      try {
+        const [loadedRequests, loadedConversations] = await Promise.all([
+          getRequestsByUser(user.id),
+          fetchConversations(user.id),
+        ]);
+
+        setRequests(loadedRequests);
+        setConversations(loadedConversations);
+
+        const fromQuery = searchParams.get("request");
+        setSelectedId(fromQuery || loadedRequests[0]?.id || null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudieron cargar tus solicitudes.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    load();
+  }, [isAuthenticated, user, searchParams]);
+
+  const selectedRequest = useMemo(
+    () => requests.find((r) => r.id === selectedId) || null,
+    [requests, selectedId]
+  );
+
+  const selectedConversation = useMemo(() => {
+    if (!selectedRequest) return null;
+
+    const byOrder = conversations.find((c) => c.orderId === selectedRequest.id);
+    if (byOrder) return byOrder;
+
+    const byProduct = conversations.find((c) => c.productId === selectedRequest.productId);
+    return byProduct || null;
+  }, [conversations, selectedRequest]);
+
+  useEffect(() => {
+    if (!selectedConversation) return;
+    if (messagesByConversation[selectedConversation.id]) return;
+
+    const loadMessages = async () => {
+      try {
+        const result = await fetchConversationMessages(selectedConversation.id);
+        setMessagesByConversation((prev) => ({
+          ...prev,
+          [selectedConversation.id]: result.messages,
+        }));
+      } catch {
+        // Keep empty state.
+      }
+    };
+
+    loadMessages();
+  }, [selectedConversation, messagesByConversation]);
+
+  const selectedMessages = useMemo(() => {
+    if (!selectedConversation) return [];
+    return messagesByConversation[selectedConversation.id] || [];
+  }, [messagesByConversation, selectedConversation]);
+
+  const sendMessage = async () => {
+    if (!user || !selectedRequest || !newMessage.trim() || isSending) return;
+
+    setIsSending(true);
+    try {
+      const payload = {
+        conversationId: selectedConversation?.id,
+        participantIds: selectedConversation ? undefined : [user.id, PLATFORM_USER_ID],
+        senderId: user.id,
+        senderName: user.name,
+        content: newMessage.trim(),
+        productId: selectedRequest.productId,
+        orderId: selectedRequest.id,
+      };
+
+      const { conversation, message } = await sendMessageApi(payload);
+
+      if (!selectedConversation) {
+        setConversations((prev) => [conversation, ...prev]);
+      }
+
+      setMessagesByConversation((prev) => {
+        const list = prev[conversation.id] || [];
+        return {
+          ...prev,
+          [conversation.id]: [...list, message],
+        };
+      });
+
+      setNewMessage("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo enviar el mensaje.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  if (!isAuthenticated || !user) return null;
 
   return (
     <main className="min-h-screen bg-background">
@@ -183,10 +176,14 @@ const MyRequests = () => {
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Historial de solicitudes</h1>
             <p className="text-sm text-muted-foreground">
-              Consulta el estado y conversa con el trabajador asignado.
+              Consulta el estado de tus solicitudes y conversa desde aquí.
             </p>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-1">
@@ -194,7 +191,10 @@ const MyRequests = () => {
               <CardTitle>Mis peticiones</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {requests.length === 0 && (
+              {isLoading && (
+                <p className="text-sm text-muted-foreground">Cargando solicitudes...</p>
+              )}
+              {!isLoading && requests.length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   Aún no tienes solicitudes. Explora productos y envía una petición desde el detalle.
                 </p>
@@ -217,11 +217,9 @@ const MyRequests = () => {
                         <p className="text-xs text-muted-foreground">{req.productCity}</p>
                       )}
                     </div>
-                    <Badge className={statusColors[req.status]}>{req.status}</Badge>
+                    <Badge className={statusColors[req.status]}>{statusLabel(req.status)}</Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                    {req.message}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{req.reason}</p>
                 </button>
               ))}
             </CardContent>
@@ -234,7 +232,7 @@ const MyRequests = () => {
             <CardContent className="space-y-4">
               {!selectedRequest && (
                 <p className="text-sm text-muted-foreground">
-                  Selecciona una solicitud para ver su estado y conversar.
+                  Selecciona una solicitud para ver su detalle y conversar.
                 </p>
               )}
 
@@ -243,48 +241,31 @@ const MyRequests = () => {
                   <div className="flex flex-wrap gap-3 items-center justify-between">
                     <div>
                       <p className="text-lg font-semibold">{selectedRequest.productTitle}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Solicitud ID: {selectedRequest.id}
-                      </p>
+                      <p className="text-sm text-muted-foreground">Solicitud ID: {selectedRequest.id}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={statusColors[selectedRequest.status]}>
-                        {selectedRequest.status === "pending"
-                          ? "Pendiente"
-                          : selectedRequest.status === "in-progress"
-                          ? "En progreso"
-                          : "Resuelta"}
-                      </Badge>
-                      {selectedRequest.assignedToName && (
-                        <Badge variant="outline">
-                          Trabajador: {selectedRequest.assignedToName}
-                        </Badge>
-                      )}
-                    </div>
+                    <Badge className={statusColors[selectedRequest.status]}>
+                      {statusLabel(selectedRequest.status)}
+                    </Badge>
                   </div>
 
                   <div className="rounded-lg border bg-gray-50 p-3 space-y-2 text-sm">
-                    <p className="font-medium">Notas iniciales</p>
-                    <p className="whitespace-pre-line text-foreground">{selectedRequest.message}</p>
+                    <p className="font-medium">Motivo de la solicitud</p>
+                    <p className="whitespace-pre-line text-foreground">{selectedRequest.reason}</p>
                   </div>
 
                   <div className="h-[420px] flex flex-col border rounded-lg overflow-hidden">
                     <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-white">
                       {selectedMessages.length === 0 && (
-                        <p className="text-sm text-muted-foreground">
-                          Aún no hay mensajes en esta solicitud.
-                        </p>
+                        <p className="text-sm text-muted-foreground">Aún no hay mensajes en esta solicitud.</p>
                       )}
                       {selectedMessages.map((msg) => (
                         <div
                           key={msg.id}
-                          className={`flex ${
-                            msg.from === user.id || msg.from === user.email ? "justify-end" : "justify-start"
-                          }`}
+                          className={`flex ${msg.senderId === user.id ? "justify-end" : "justify-start"}`}
                         >
                           <div
                             className={`max-w-xs px-4 py-2 rounded-2xl shadow-sm ${
-                              msg.from === user.id || msg.from === user.email
+                              msg.senderId === user.id
                                 ? "bg-green-500 text-white"
                                 : "bg-gray-100 text-gray-800 border border-gray-200"
                             }`}
@@ -292,10 +273,10 @@ const MyRequests = () => {
                             <p className="text-sm">{msg.content}</p>
                             <p
                               className={`text-[11px] mt-1 ${
-                                msg.from === user.id || msg.from === user.email ? "text-green-100" : "text-gray-500"
+                                msg.senderId === user.id ? "text-green-100" : "text-gray-500"
                               }`}
                             >
-                              {new Date(msg.timestamp).toLocaleTimeString([], {
+                              {new Date(msg.createdAt).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
@@ -317,11 +298,11 @@ const MyRequests = () => {
                         />
                         <Button
                           onClick={sendMessage}
-                          disabled={!newMessage.trim()}
+                          disabled={!newMessage.trim() || isSending}
                           size="sm"
                           className="bg-green-500 hover:bg-green-600 text-white rounded-full px-4"
                         >
-                          Enviar
+                          {isSending ? "Enviando..." : "Enviar"}
                         </Button>
                       </div>
                     </div>

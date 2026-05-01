@@ -8,9 +8,22 @@ const router = express.Router()
 router.post("/create", async (req, res) => {
   const {
     productId,
+    productTitle,
+    productCity,
     requesterId,
     requesterEmail,
     requesterName,
+    requesterPhone,
+    requesterCity,
+    householdSize,
+    needLevel,
+    reason,
+    intendedUse,
+    pickupWindow,
+    extraNotes,
+    evidence,
+    score,
+    scoreBreakdown,
     donorId,
     message,
     location,
@@ -25,9 +38,22 @@ router.post("/create", async (req, res) => {
 
     const donationRequest = await DonationRequest.create({
       productId,
+      productTitle: productTitle || null,
+      productCity: productCity || null,
       requesterId,
       requesterEmail,
       requesterName,
+      requesterPhone: requesterPhone || null,
+      requesterCity: requesterCity || null,
+      householdSize: householdSize || null,
+      needLevel: needLevel || 'media',
+      reason: reason || null,
+      intendedUse: intendedUse || null,
+      pickupWindow: pickupWindow || null,
+      extraNotes: extraNotes || null,
+      evidence: evidence || null,
+      score: typeof score === 'number' ? score : 0,
+      scoreBreakdown: scoreBreakdown || null,
       donorId: donorId || null,
       message: message || null,
       location: location || null,
@@ -96,9 +122,49 @@ router.get("/:id", async (req, res) => {
 
 // PUT /api/orders/:id — Update a donation request (status, donorId, etc.)
 router.put("/:id", async (req, res) => {
-  const { status, donorId, message, location, city, country } = req.body
+  const {
+    status,
+    donorId,
+    message,
+    location,
+    city,
+    country,
+    productTitle,
+    productCity,
+    requesterPhone,
+    requesterCity,
+    householdSize,
+    needLevel,
+    reason,
+    intendedUse,
+    pickupWindow,
+    extraNotes,
+    evidence,
+    score,
+    scoreBreakdown,
+  } = req.body
 
-  const updates = { status, donorId, message, location, city, country }
+  const updates = {
+    status,
+    donorId,
+    message,
+    location,
+    city,
+    country,
+    productTitle,
+    productCity,
+    requesterPhone,
+    requesterCity,
+    householdSize,
+    needLevel,
+    reason,
+    intendedUse,
+    pickupWindow,
+    extraNotes,
+    evidence,
+    score,
+    scoreBreakdown,
+  }
   Object.keys(updates).forEach((key) => {
     if (updates[key] === undefined) delete updates[key]
   })
