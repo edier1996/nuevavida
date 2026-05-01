@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -19,9 +20,16 @@ const Login = () => {
     setError("");
 
     if (mode === "login") {
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result.success) {
         navigate("/");
+      } else if (result.emailNotVerified) {
+        toast({
+          title: "Email no verificado",
+          description: "Por favor verifica tu email antes de iniciar sesión",
+          variant: "destructive",
+        });
+        navigate("/verify-email", { state: { email } });
       } else {
         setError("Credenciales incorrectas");
       }
@@ -30,7 +38,11 @@ const Login = () => {
 
     const result = await register(name, email, password, phone, city, address);
     if (result.success) {
-      navigate("/");
+      toast({
+        title: "Éxito",
+        description: "Cuenta creada. Verifica tu email para continuar.",
+      });
+      navigate("/verify-email", { state: { email } });
     } else {
       setError(result.error || "No se pudo crear la cuenta.");
     }

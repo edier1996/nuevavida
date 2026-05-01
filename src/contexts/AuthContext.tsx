@@ -47,7 +47,7 @@ const API_BASE_URL = resolveApiBaseUrl();
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; emailNotVerified?: boolean }>;
   register: (
     name: string,
     email: string,
@@ -165,7 +165,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       .join("");
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; emailNotVerified?: boolean }> => {
     // Login local para cuentas internas (admin/worker)
     const users: StoredUser[] = JSON.parse(localStorage.getItem("users") || "[]");
     const hashedPassword = await hashPassword(password);
@@ -183,7 +183,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { password, passwordHash, ...userWithoutPassword } = foundUser;
       setUser(userWithoutPassword);
       localStorage.setItem("user", JSON.stringify(userWithoutPassword));
-      return true;
+      return { success: true };
     }
 
     // Login SQL para usuarios finales
@@ -196,8 +196,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         body: JSON.stringify({ email, password }),
       });
 
+      if (response.status === 403) {
+        return { success: false, emailNotVerified: true };
+      }
+
       if (!response.ok) {
-        return false;
+        return { success: false };
       }
 
       const data = await response.json();
@@ -213,7 +217,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       };
 
       if (!backendUser.id) {
-        return false;
+        return { success: false };
       }
 
       const profileRaw = localStorage.getItem(`user_profile_${backendUser.id}`);
@@ -226,12 +230,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       setUser(mergedUser);
       localStorage.setItem("user", JSON.stringify(mergedUser));
-      return true;
+      return { success: true };
     } catch {
-      return false;
+      return { success: false };
     }
-
-    return false;
   };
 
   const register = async (
