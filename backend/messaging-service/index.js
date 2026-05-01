@@ -12,26 +12,11 @@ const PORT = process.env.PORT || 5005
 
 const app = express()
 
-// CORS configuration
-const allowedOrigins = [
-  "https://nuevavida1327.com",
-  "https://nuevavida-production.up.railway.app",
-  "http://localhost:8080",
-  "http://localhost:5173",
-]
-
+// CORS — allow all origins (public API)
 const corsOptions = {
-  origin(origin, callback) {
-    if (!origin) return callback(null, true)
-    const isRailwayDomain = /^https:\/\/[^/]+\.up\.railway\.app$/.test(origin)
-    if (allowedOrigins.includes(origin) || isRailwayDomain) {
-      return callback(null, true)
-    }
-    return callback(new Error(`CORS blocked for origin: ${origin}`), false)
-  },
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false,
 }
 
 app.use(cors(corsOptions))
