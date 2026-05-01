@@ -3,6 +3,7 @@ const dotenv = require("dotenv")
 const cors = require("cors")
 const { sequelize, User } = require('./db')
 const userRoutes = require("./routes/user")
+const { sendPasswordResetEmail } = require('./config/email')
 
 const PORT = process.env.PORT || 5000
 
