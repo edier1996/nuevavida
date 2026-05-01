@@ -21,6 +21,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    role: {
+      type: DataTypes.ENUM('user', 'admin', 'worker'),
+      defaultValue: 'user',
+      allowNull: false,
+    },
   }, {
     tableName: 'users',
     hooks: {
