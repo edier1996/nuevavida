@@ -9,7 +9,11 @@ const resolveApiBaseUrl = () => {
     "";
 
   const trimmed = raw.trim().replace(/\/+$/, "");
-  const normalized = trimmed.endsWith("/api") ? trimmed.slice(0, -4) : trimmed;
+  let normalized = trimmed.endsWith("/api") ? trimmed.slice(0, -4) : trimmed;
+
+  if (normalized && !/^https?:\/\//i.test(normalized)) {
+    normalized = `https://${normalized}`;
+  }
 
   if (
     typeof window !== "undefined" &&

@@ -40,7 +40,11 @@ const resolveApiBaseUrl = () => {
     "";
 
   const trimmed = raw.trim().replace(/\/+$/, "");
-  const normalized = trimmed.endsWith("/api") ? trimmed.slice(0, -4) : trimmed;
+  let normalized = trimmed.endsWith("/api") ? trimmed.slice(0, -4) : trimmed;
+
+  if (normalized && !/^https?:\/\//i.test(normalized)) {
+    normalized = `https://${normalized}`;
+  }
 
   if (
     typeof window !== "undefined" &&
@@ -54,6 +58,12 @@ const resolveApiBaseUrl = () => {
 };
 
 const API_BASE_URL = resolveApiBaseUrl();
+
+const requireApiBaseUrl = () => {
+  if (!API_BASE_URL) {
+    throw new Error("Falta configurar VITE_ORDERS_API_BASE_URL en Railway.");
+  }
+};
 
 type ApiRequest = Record<string, unknown>;
 
@@ -109,6 +119,7 @@ const toProductRequest = (item: ApiRequest): ProductRequest => ({
 });
 
 export const getRequests = async (): Promise<ProductRequest[]> => {
+  requireApiBaseUrl();
   const response = await fetch(`${API_BASE_URL}/api/orders`);
   if (!response.ok) {
     throw new Error("No se pudieron cargar las solicitudes");
@@ -120,6 +131,7 @@ export const getRequests = async (): Promise<ProductRequest[]> => {
 export const addRequest = async (
   payload: Omit<ProductRequest, "id" | "createdAt" | "status" | "score" | "scoreBreakdown">
 ): Promise<ProductRequest> => {
+  requireApiBaseUrl();
   const score =
     (payload.needLevel === "alta" ? 50 : payload.needLevel === "media" ? 30 : 10) +
     (payload.requesterCity && payload.productCity && payload.requesterCity === payload.productCity ? 20 : 0) +
@@ -181,6 +193,7 @@ export const updateRequestStatus = async (
   id: string,
   status: RequestStatus
 ): Promise<ProductRequest[]> => {
+  requireApiBaseUrl();
   const response = await fetch(`${API_BASE_URL}/api/orders/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -195,6 +208,7 @@ export const updateRequestStatus = async (
 };
 
 export const getRequestsByProduct = async (productId: string): Promise<ProductRequest[]> => {
+  requireApiBaseUrl();
   const response = await fetch(`${API_BASE_URL}/api/orders/product/${encodeURIComponent(productId)}`);
   if (!response.ok) {
     throw new Error("No se pudieron cargar las solicitudes del producto");
@@ -208,6 +222,7 @@ export const getRequestsByProduct = async (productId: string): Promise<ProductRe
 };
 
 export const getRequestsByUser = async (userId: string): Promise<ProductRequest[]> => {
+  requireApiBaseUrl();
   const response = await fetch(`${API_BASE_URL}/api/orders/user/${encodeURIComponent(userId)}`);
   if (!response.ok) {
     throw new Error("No se pudieron cargar tus solicitudes");
