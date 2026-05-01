@@ -15,6 +15,7 @@ const VerifyEmail = () => {
   const location = useLocation();
   const { verifyEmail } = useAuth();
   const email = location.state?.email || "";
+  const emailSent = location.state?.emailSent !== false; // Default to true if not specified
 
   if (!email) {
     return (
@@ -106,9 +107,18 @@ const VerifyEmail = () => {
           <CardTitle>Verifica tu email</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Hemos enviado un código de verificación a <strong>{email}</strong>
-          </p>
+          {emailSent ? (
+            <p className="text-sm text-muted-foreground mb-4">
+              Hemos enviado un código de verificación a <strong>{email}</strong>
+            </p>
+          ) : (
+            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+              <p className="text-sm text-yellow-800">
+                <strong>⚠️ Nota:</strong> No pudimos enviar el código por email.
+                Usa el botón "Reenviar Código" para intentar de nuevo, o verifica tu carpeta de spam.
+              </p>
+            </div>
+          )}
           <form onSubmit={handleVerify} className="space-y-4">
             <div>
               <Label htmlFor="code">Código de verificación</Label>

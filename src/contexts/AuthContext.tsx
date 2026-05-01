@@ -55,7 +55,7 @@ interface AuthContextType {
     phone?: string,
     city?: string,
     address?: string
-  ) => Promise<{ success: boolean; error?: string; email?: string }>;
+  ) => Promise<{ success: boolean; error?: string; email?: string; emailSent?: boolean }>;
   verifyEmail: (email: string, verificationCode: string) => Promise<{ success: boolean; error?: string; token?: string }>;
   createUser: (
     name: string,
@@ -243,7 +243,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     phone?: string,
     city?: string,
     address?: string
-  ): Promise<{ success: boolean; error?: string; email?: string }> => {
+  ): Promise<{ success: boolean; error?: string; email?: string; emailSent?: boolean }> => {
     if (!isPasswordStrong(password)) {
       return {
         success: false,
@@ -267,8 +267,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { success: false, error: error.error || "Registration failed" };
       }
 
-      // Return email so frontend can redirect to verification page
-      return { success: true, email };
+      const data = await response.json();
+
+      // Return email and emailSent status so frontend can show appropriate message
+      return { success: true, email, emailSent: data.emailSent };
     } catch (error) {
       return {
         success: false,
