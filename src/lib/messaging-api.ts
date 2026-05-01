@@ -22,7 +22,17 @@ export interface Message {
 // ─── Base URL resolution ──────────────────────────────────────────────────────
 
 const resolveMessagingApiBaseUrl = () => {
+  // Prefer the runtime-injected value (set via sed in the Railway start command),
+  // but ignore it if the placeholder was never replaced.
+  const runtimeUrl =
+    typeof window !== "undefined" &&
+    typeof (window as Window & { __MESSAGING_API_BASE_URL__?: string }).__MESSAGING_API_BASE_URL__ === "string" &&
+    (window as Window & { __MESSAGING_API_BASE_URL__?: string }).__MESSAGING_API_BASE_URL__ !== "__MESSAGING_API_BASE_URL__"
+      ? (window as Window & { __MESSAGING_API_BASE_URL__?: string }).__MESSAGING_API_BASE_URL__
+      : "";
+
   const raw =
+    runtimeUrl ||
     import.meta.env.VITE_MESSAGING_API_BASE_URL ||
     import.meta.env.VITE_API_BASE_URL ||
     import.meta.env.VITE_API_URL ||
