@@ -21,6 +21,7 @@ interface ConversationView {
   conversation: Conversation;
   messages: Message[];
   otherUserId: string;
+  otherUserName: string;
   unreadCount: number;
   lastMessage: Message | null;
 }
@@ -65,18 +66,32 @@ const Messages = () => {
               (m) => m.senderId !== user.id && !m.read
             ).length;
             const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+            const otherUserId = getOtherUserId(conv);
+            // Derive other user's name: prefer participantNames, then scan messages
+            let otherUserName: string;
+            if (Array.isArray(conv.participantNames) && conv.participantNames.length === 2) {
+              const myIndex = conv.participantIds.indexOf(user.id);
+              const otherIndex = myIndex === 0 ? 1 : 0;
+              otherUserName = conv.participantNames[otherIndex] ?? `Usuario ${otherUserId}`;
+            } else {
+              const otherMsg = messages.find((m) => m.senderId !== user.id);
+              otherUserName = otherMsg?.senderName ?? `Usuario ${otherUserId}`;
+            }
             return {
               conversation: conv,
               messages,
-              otherUserId: getOtherUserId(conv),
+              otherUserId,
+              otherUserName,
               unreadCount,
               lastMessage,
             };
           } catch {
+            const otherUserId = getOtherUserId(conv);
             return {
               conversation: conv,
               messages: [],
-              otherUserId: getOtherUserId(conv),
+              otherUserId,
+              otherUserName: `Usuario ${otherUserId}`,
               unreadCount: 0,
               lastMessage: null,
             };
@@ -419,6 +434,7 @@ const Messages = () => {
     try {
       const { conversation, message } = await apiSendMessage({
         participantIds: [user.id, otherUserId],
+        participantNames: [user.name, otherUserId],
         senderId: user.id,
         senderName: user.name,
         content: firstMessage,
@@ -429,6 +445,7 @@ const Messages = () => {
         conversation,
         messages: [message],
         otherUserId,
+        otherUserName: `Usuario ${otherUserId}`,
         unreadCount: 0,
         lastMessage: message,
       };
@@ -511,7 +528,7 @@ const Messages = () => {
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-foreground truncate">
-                            {view.otherUserId}
+                            {view.otherUserName}
                           </p>
                           {view.lastMessage && (
                             <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
@@ -545,7 +562,7 @@ const Messages = () => {
                   {/* Header */}
                   <div className="p-4 bg-green-500 text-white flex items-center justify-between gap-3">
                     <div>
-                      <h3 className="font-semibold">{selectedView.otherUserId}</h3>
+                      <h3 className="font-semibold">{selectedView.otherUserName}</h3>
                     </div>
                   </div>
 

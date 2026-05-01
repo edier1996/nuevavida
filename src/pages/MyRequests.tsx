@@ -154,6 +154,7 @@ const MyRequests = () => {
       const payload = {
         conversationId: selectedConversation?.id,
         participantIds: selectedConversation ? undefined : [user.id, PLATFORM_USER_ID],
+        participantNames: selectedConversation ? undefined : [user.name, 'Plataforma'],
         senderId: user.id,
         senderName: user.name,
         content: newMessage.trim(),

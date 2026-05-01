@@ -13,6 +13,11 @@ module.exports = (sequelize) => {
       type: DataTypes.JSON,
       allowNull: false,
     },
+    // Stored as JSON array of two strings: [requesterName, donorName]
+    participantNames: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
     productId: {
       type: DataTypes.UUID,
       allowNull: true,

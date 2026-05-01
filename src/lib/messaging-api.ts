@@ -3,6 +3,7 @@
 export interface Conversation {
   id: string;
   participantIds: string[];
+  participantNames?: string[] | null;
   productId?: string | null;
   orderId?: string | null;
   createdAt: string;
@@ -116,6 +117,7 @@ export const sendMessage = async (params: {
   content: string;
   // Required when creating a new conversation
   participantIds?: string[];
+  participantNames?: string[];
   productId?: string;
   orderId?: string;
 }): Promise<{ conversation: Conversation; message: Message }> => {
