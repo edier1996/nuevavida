@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
 
 interface StoredMessage {
   id?: string;
@@ -118,23 +119,36 @@ const ProductDetail = () => {
       `Ciudad del producto: ${product.city}` +
       (firstImageUrl ? `\nImagen: ${firstImageUrl}` : "");
 
-    const created = await addRequest({
-      productId: product.id,
-      productTitle: product.title,
-      productCity: product.city,
-      requesterId: user.id,
-      requesterName: user.name,
-      requesterEmail: user.email,
-      requesterPhone: user.phone,
-      requesterCity,
-      householdSize,
-      needLevel,
-      reason,
-      intendedUse,
-      pickupWindow,
-      extraNotes,
-      evidence: evidence || undefined,
-    });
+    let created;
+    try {
+      created = await addRequest({
+        productId: product.id,
+        productTitle: product.title,
+        productCity: product.city,
+        requesterId: user.id,
+        requesterName: user.name,
+        requesterEmail: user.email,
+        requesterPhone: user.phone,
+        requesterCity,
+        householdSize,
+        needLevel,
+        reason,
+        intendedUse,
+        pickupWindow,
+        extraNotes,
+        evidence: evidence || undefined,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al enviar la solicitud",
+        description:
+          err instanceof Error
+            ? err.message
+            : "No se pudo registrar la solicitud. Intenta nuevamente.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const requestId = created.id;
 

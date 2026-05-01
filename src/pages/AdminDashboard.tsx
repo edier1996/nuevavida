@@ -47,7 +47,22 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    setRequests(getRequests());
+    const loadRequests = async () => {
+      try {
+        const data = await getRequests();
+        setRequests(data);
+      } catch (err) {
+        toast({
+          title: "Error al cargar solicitudes",
+          description:
+            err instanceof Error
+              ? err.message
+              : "No se pudieron cargar las solicitudes. Intenta nuevamente.",
+          variant: "destructive",
+        });
+      }
+    };
+    loadRequests();
   }, []);
 
   const handleCreateUser = async () => {
@@ -113,22 +128,44 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleSelectRequest = (id: string) => {
-    const updated = updateRequestStatus(id, "selected");
-    setRequests(updated);
-    toast({
-      title: "Beneficiario seleccionado",
-      description: "Se bloquearon nuevas solicitudes y el producto quedó en proceso de entrega.",
-    });
+  const handleSelectRequest = async (id: string) => {
+    try {
+      const updated = await updateRequestStatus(id, "selected");
+      setRequests(updated);
+      toast({
+        title: "Beneficiario seleccionado",
+        description: "Se bloquearon nuevas solicitudes y el producto quedó en proceso de entrega.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al seleccionar beneficiario",
+        description:
+          err instanceof Error
+            ? err.message
+            : "No se pudo actualizar el estado. Intenta nuevamente.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleMarkDelivered = (id: string) => {
-    const updated = updateRequestStatus(id, "delivered");
-    setRequests(updated);
-    toast({
-      title: "Entrega cerrada",
-      description: "El producto quedó marcado como entregado y se guardó en el historial.",
-    });
+  const handleMarkDelivered = async (id: string) => {
+    try {
+      const updated = await updateRequestStatus(id, "delivered");
+      setRequests(updated);
+      toast({
+        title: "Entrega cerrada",
+        description: "El producto quedó marcado como entregado y se guardó en el historial.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al marcar entrega",
+        description:
+          err instanceof Error
+            ? err.message
+            : "No se pudo actualizar el estado. Intenta nuevamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const statusLabel = (status: ProductRequest["status"]) => {
