@@ -1,54 +1,118 @@
 <svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="80" y1="40" x2="1120" y2="860" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#ECF6EF"/>
-      <stop offset="1" stop-color="#F6EFE6"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F6F0"/>
+      <stop offset="1" stop-color="#EEF3EA"/>
     </linearGradient>
-    <linearGradient id="shirt" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#4A8C63"/>
-      <stop offset="1" stop-color="#2E6E49"/>
+    <linearGradient id="skin1" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#E9AE7B"/>
+      <stop offset="1" stop-color="#C98652"/>
+    </linearGradient>
+    <linearGradient id="skin2" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#E3A978"/>
+      <stop offset="1" stop-color="#C47C46"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#6D9A53"/>
+      <stop offset="1" stop-color="#456A38"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#2E5D8F"/>
+      <stop offset="1" stop-color="#1A3557"/>
     </linearGradient>
     <linearGradient id="box" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#D7A977"/>
-      <stop offset="1" stop-color="#B97B3D"/>
+      <stop stop-color="#D8A36A"/>
+      <stop offset="1" stop-color="#B17844"/>
     </linearGradient>
     <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#1F3B2A" flood-opacity="0.12"/>
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#1D2E1F" flood-opacity="0.14"/>
     </filter>
   </defs>
 
-  <rect x="0" y="0" width="1200" height="900" fill="url(#bg)"/>
-  <circle cx="200" cy="140" r="160" fill="#CFE6D6" opacity="0.55"/>
-  <circle cx="1020" cy="160" r="190" fill="#E8D7C2" opacity="0.5"/>
+  <rect width="1200" height="900" fill="url(#bg)"/>
+
+  <path d="M0 764C95 742 125 800 210 776C285 754 350 790 420 780V900H0V764Z" fill="#C9DAB9"/>
+  <path d="M1200 768C1100 740 1034 802 944 776C855 750 795 785 724 775V900H1200V768Z" fill="#CBD9BE"/>
 
   <g filter="url(#soft)">
-    <rect x="350" y="260" width="500" height="360" rx="40" fill="#FFFFFF"/>
+    <path d="M72 110C95 84 142 84 167 106C194 128 196 168 169 194C142 220 95 222 70 195C45 169 45 135 72 110Z" fill="#C9DEB3"/>
+    <path d="M1040 116C1074 84 1135 87 1161 119C1188 151 1180 203 1143 224C1108 244 1062 237 1036 206C1010 175 1010 145 1040 116Z" fill="#BFD0E6"/>
   </g>
 
-  <rect x="430" y="360" width="340" height="230" rx="20" fill="url(#box)"/>
-  <rect x="430" y="360" width="340" height="42" rx="16" fill="#E4BC8F"/>
-  <path d="M600 405V590" stroke="#F6D8B4" stroke-width="10" stroke-linecap="round"/>
-  <path d="M430 405H770" stroke="#F6D8B4" stroke-width="10" stroke-linecap="round"/>
+  <text x="600" y="108" text-anchor="middle" font-size="92" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" fill="#4E7441">DAR Y </text>
+  <text x="760" y="108" text-anchor="start" font-size="92" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" fill="#23476E">RECIBIR</text>
 
-  <path d="M535 470C558 440 589 440 611 470C633 440 664 440 687 470C705 493 704 529 683 548L611 615C605 621 595 621 589 615L517 548C496 529 495 493 513 470C519 463 527 458 535 470Z" fill="#2EBF5F"/>
+  <path d="M396 166C430 214 500 230 546 216" stroke="#5D8E4A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M548 216L532 200" stroke="#5D8E4A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M548 216L528 218" stroke="#5D8E4A" stroke-width="8" stroke-linecap="round"/>
+
+  <path d="M684 214C740 230 810 214 846 172" stroke="#23476E" stroke-width="8" stroke-linecap="round"/>
+  <path d="M846 172L826 172" stroke="#23476E" stroke-width="8" stroke-linecap="round"/>
+  <path d="M846 172L832 190" stroke="#23476E" stroke-width="8" stroke-linecap="round"/>
+
+  <path d="M594 168C612 144 648 144 664 168C678 188 674 212 654 228L635 245C631 249 625 249 621 245L604 230C584 214 578 189 594 168Z" stroke="#5D8E4A" stroke-width="6" fill="none"/>
+
+  <text x="192" y="166" text-anchor="middle" font-size="42" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#264830">Dale una</text>
+  <text x="192" y="212" text-anchor="middle" font-size="42" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#264830">segunda vida</text>
+  <text x="192" y="258" text-anchor="middle" font-size="42" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#264830">a las cosas</text>
+
+  <text x="1088" y="170" text-anchor="middle" font-size="44" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#223A56">Una comunidad</text>
+  <text x="1088" y="218" text-anchor="middle" font-size="44" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#223A56">que comparte</text>
+  <text x="1088" y="266" text-anchor="middle" font-size="44" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#223A56">y se ayuda</text>
+
+  <text x="600" y="288" text-anchor="middle" font-size="43" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">Lo que para ti ya no</text>
+  <text x="600" y="338" text-anchor="middle" font-size="43" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">utilizas, para alguien</text>
+  <text x="600" y="388" text-anchor="middle" font-size="43" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">mas puede ser</text>
+  <text x="600" y="438" text-anchor="middle" font-size="43" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">exactamente lo que</text>
+  <text x="600" y="488" text-anchor="middle" font-size="43" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">necesita.</text>
 
   <g>
-    <rect x="238" y="430" width="190" height="200" rx="28" fill="url(#shirt)"/>
-    <circle cx="333" cy="390" r="52" fill="#F2C9A0"/>
-    <path d="M230 560C280 520 350 520 410 560" stroke="#F2C9A0" stroke-width="22" stroke-linecap="round"/>
-    <path d="M404 562C430 560 454 574 470 598" stroke="#F2C9A0" stroke-width="20" stroke-linecap="round"/>
+    <circle cx="245" cy="388" r="56" fill="url(#skin1)"/>
+    <path d="M177 425C192 379 236 355 278 365C305 372 320 390 322 420C306 422 296 417 281 408C254 392 221 396 177 425Z" fill="#4E342A"/>
+    <rect x="140" y="442" width="230" height="220" rx="48" fill="url(#green)"/>
+    <path d="M298 568C328 565 353 581 369 606" stroke="url(#skin1)" stroke-width="22" stroke-linecap="round"/>
+    <path d="M150 585C205 548 278 544 326 576" stroke="url(#skin1)" stroke-width="24" stroke-linecap="round"/>
+    <rect x="275" y="562" width="206" height="148" rx="12" fill="url(#box)"/>
+    <rect x="275" y="562" width="206" height="28" rx="10" fill="#E2B684"/>
+    <text x="378" y="652" text-anchor="middle" font-size="46" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" fill="#5A3A22">YA NO</text>
+    <text x="378" y="700" text-anchor="middle" font-size="46" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" fill="#5A3A22">LO USO</text>
   </g>
 
   <g>
-    <rect x="772" y="430" width="190" height="200" rx="28" fill="#3F7C57"/>
-    <circle cx="867" cy="390" r="52" fill="#EFB98D"/>
-    <path d="M970 560C920 520 850 520 790 560" stroke="#EFB98D" stroke-width="22" stroke-linecap="round"/>
-    <path d="M796 562C770 560 746 574 730 598" stroke="#EFB98D" stroke-width="20" stroke-linecap="round"/>
+    <circle cx="956" cy="388" r="56" fill="url(#skin2)"/>
+    <path d="M896 394C902 354 935 334 978 338C1011 342 1036 362 1040 398C1019 402 1000 397 980 386C952 372 925 373 896 394Z" fill="#4A3024"/>
+    <rect x="840" y="442" width="230" height="220" rx="48" fill="url(#blue)"/>
+    <path d="M852 584C905 550 974 546 1020 580" stroke="url(#skin2)" stroke-width="24" stroke-linecap="round"/>
+    <path d="M841 606C825 583 803 567 776 565" stroke="url(#skin2)" stroke-width="22" stroke-linecap="round"/>
+    <rect x="720" y="574" width="206" height="136" rx="12" fill="url(#box)"/>
+    <rect x="720" y="574" width="206" height="28" rx="10" fill="#E2B684"/>
+    <path d="M822 634C833 617 858 617 869 634C877 648 873 666 860 675L848 684C845 687 840 687 837 684L826 676C813 666 809 648 817 634C819 631 820 628 822 634Z" fill="#567C47"/>
   </g>
 
-  <rect x="120" y="710" width="250" height="56" rx="28" fill="#FFFFFF" opacity="0.85"/>
-  <text x="160" y="747" fill="#2E6E49" font-size="30" font-family="Segoe UI, Arial, sans-serif" font-weight="700">Donacion segura</text>
+  <circle cx="520" cy="620" r="54" fill="#5E8D49"/>
+  <path d="M495 620H545" stroke="#EEF8EA" stroke-width="9" stroke-linecap="round"/>
+  <path d="M520 596V644" stroke="#EEF8EA" stroke-width="9" stroke-linecap="round"/>
 
-  <rect x="834" y="710" width="250" height="56" rx="28" fill="#FFFFFF" opacity="0.85"/>
-  <text x="868" y="747" fill="#2E6E49" font-size="30" font-family="Segoe UI, Arial, sans-serif" font-weight="700">Impacto local</text>
+  <circle cx="680" cy="620" r="54" fill="#2E5D8F"/>
+  <path d="M664 612C671 600 689 600 696 612C701 620 699 631 690 638L681 645C679 647 676 647 674 645L665 638C656 631 654 620 659 612C660 610 661 608 664 612Z" fill="#F4F7FF"/>
+
+  <text x="520" y="707" text-anchor="middle" font-size="44" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" fill="#4E7441">PUBLICA</text>
+  <text x="680" y="707" text-anchor="middle" font-size="44" font-family="'Segoe UI', Arial, sans-serif" font-weight="900" fill="#2A4B72">SOLICITA</text>
+
+  <text x="520" y="754" text-anchor="middle" font-size="34" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">Publica lo que</text>
+  <text x="520" y="794" text-anchor="middle" font-size="34" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">ya no usas y</text>
+  <text x="520" y="834" text-anchor="middle" font-size="34" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">puede servir</text>
+  <text x="520" y="874" text-anchor="middle" font-size="34" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">a otros.</text>
+
+  <text x="680" y="754" text-anchor="middle" font-size="34" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">Encuentra lo que</text>
+  <text x="680" y="794" text-anchor="middle" font-size="34" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">necesitas y</text>
+  <text x="680" y="834" text-anchor="middle" font-size="34" font-family="'Segoe UI', Arial, sans-serif" font-weight="700" fill="#26364B">solicitalo.</text>
+
+  <path d="M520 516C574 478 636 478 680 516" stroke="#557B45" stroke-width="8" stroke-linecap="round"/>
+  <path d="M680 516L664 502" stroke="#557B45" stroke-width="8" stroke-linecap="round"/>
+  <path d="M680 516L662 518" stroke="#557B45" stroke-width="8" stroke-linecap="round"/>
+
+  <path d="M680 868C640 898 575 898 520 866" stroke="#2A4B72" stroke-width="8" stroke-linecap="round"/>
+  <path d="M520 866L536 852" stroke="#2A4B72" stroke-width="8" stroke-linecap="round"/>
+  <path d="M520 866L540 870" stroke="#2A4B72" stroke-width="8" stroke-linecap="round"/>
 </svg>
