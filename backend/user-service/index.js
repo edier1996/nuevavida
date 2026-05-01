@@ -12,6 +12,7 @@ const app = express()
 // CORS configuration
 const allowedOrigins = [
   "https://nuevavida1327.com",
+  "https://www.nuevavida1327.com",
   "http://localhost:8080",
   "http://localhost:5173",
 ]
@@ -20,7 +21,8 @@ const corsOptions = {
   origin(origin, callback) {
     // Allow server-to-server/no-origin requests and browser origins in allowlist.
     if (!origin) return callback(null, true)
-    if (allowedOrigins.includes(origin) || /\.up\.railway\.app$/i.test(origin)) {
+    const isRailwayDomain = /^https:\/\/[^/]+\.up\.railway\.app$/.test(origin)
+    if (allowedOrigins.includes(origin) || isRailwayDomain) {
       return callback(null, true)
     }
     return callback(new Error(`CORS blocked for origin: ${origin}`), false)
