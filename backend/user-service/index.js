@@ -35,14 +35,38 @@ app.use(express.json())
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions)) // Handle preflight requests
 
+// Seed the default admin user if it doesn't already exist
+const initAdmin = async () => {
+  try {
+    const existingAdmin = await User.findOne({
+      where: { email: 'nuevavida1327@gmail.com' }
+    });
+
+    if (!existingAdmin) {
+      await User.create({
+        name: 'Administrador',
+        email: 'nuevavida1327@gmail.com',
+        password: 'nevavida13272026',
+        role: 'admin',
+      });
+      console.log('✅ Admin user created');
+    } else {
+      console.log('✅ Admin user already exists');
+    }
+  } catch (error) {
+    console.error('❌ Error initializing admin user:', error.message);
+  }
+};
+
 // Test connection and sync
 sequelize.authenticate()
   .then(() => {
     console.log('✅ User Service is Connected to MySQL')
-    return sequelize.sync()
+    return sequelize.sync({ alter: true })
   })
-  .then(() => {
+  .then(async () => {
     console.log('Database synchronized')
+    await initAdmin()
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`)
     })
