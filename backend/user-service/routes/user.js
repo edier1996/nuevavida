@@ -1,5 +1,5 @@
 const express = require("express")
-const { User } = require("../db")
+const { User, TempRegistration } = require("../db")
 const argon2 = require("argon2")
 const jwt = require("jsonwebtoken")
 const { sendPasswordResetEmail, sendVerificationEmail } = require("../config/email")
@@ -23,49 +23,54 @@ const auth = (req, res, next) => {
 // Register a new user
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body
+    const { name, email, password } = req.body;
 
     // Validation
     if (!name || !email || !password) {
-      return res.status(400).json({ error: "Name, email, and password are required" })
+      return res.status(400).json({ error: "Name, email, and password are required" });
     }
 
     if (password.length < 8) {
-      return res.status(400).json({ error: "Password must be at least 8 characters" })
+      return res.status(400).json({ error: "Password must be at least 8 characters" });
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ where: { email } })
+    const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: "Email already registered" })
+      return res.status(400).json({ error: "Email already registered" });
+    }
+
+    // Check if temp registration already exists
+    const existingTemp = await TempRegistration.findOne({ where: { email } });
+    if (existingTemp) {
+      // Delete old temp registration
+      await existingTemp.destroy();
     }
 
     // Generate 6-digit verification code
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
-    const verificationCodeExpiry = new Date(Date.now() + 15 * 60000) // 15 minutes
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCodeExpiry = new Date(Date.now() + 15 * 60000); // 15 minutes
 
-    // Create user (not verified yet)
-    const user = await User.create({
+    // Create temporary registration (NOT a real user yet)
+    const tempReg = await TempRegistration.create({
       name,
       email,
       password,
-      role: 'user',
-      isEmailVerified: false,
-      emailVerificationCode: verificationCode,
-      emailVerificationCodeExpiry: verificationCodeExpiry,
-    })
+      verificationCode,
+      verificationCodeExpiry,
+    });
 
     // Send verification email
-    await sendVerificationEmail(email, verificationCode)
+    await sendVerificationEmail(email, verificationCode);
 
     res.status(201).json({
-      msg: "User created. Check your email for verification code.",
-      userId: user.id,
-      email: user.email,
-    })
+      msg: "Verification code sent to your email. Please verify to complete registration.",
+      email: email,
+      tempRegistrationId: tempReg.id,
+    });
   } catch (error) {
-    console.error("Error in register:", error)
-    res.status(500).json({ error: error.message })
+    console.error("Error in register:", error);
+    res.status(500).json({ error: error.message });
   }
 })
 
@@ -135,83 +140,97 @@ router.put("/:id", auth, async (req, res) => {
 // Verify email with code
 router.post("/verify-email", async (req, res) => {
   try {
-    const { email, verificationCode } = req.body
+    const { email, verificationCode } = req.body;
 
     if (!email || !verificationCode) {
-      return res.status(400).json({ error: "Email and verification code are required" })
+      return res.status(400).json({ error: "Email and verification code are required" });
     }
 
-    const user = await User.findOne({ where: { email } })
-    if (!user) {
-      return res.status(404).json({ error: "User not found" })
+    // Check if it's a temp registration
+    const tempReg = await TempRegistration.findOne({ where: { email } });
+    if (!tempReg) {
+      return res.status(404).json({ error: "Registration not found. Please register again." });
     }
 
-    if (user.isEmailVerified) {
-      return res.json({ msg: "Email already verified" })
+    if (tempReg.verificationCode !== verificationCode) {
+      return res.status(400).json({ error: "Invalid verification code" });
     }
 
-    if (user.emailVerificationCode !== verificationCode) {
-      return res.status(400).json({ error: "Invalid verification code" })
+    if (new Date() > tempReg.verificationCodeExpiry) {
+      await tempReg.destroy();
+      return res.status(400).json({ error: "Verification code has expired. Please register again." });
     }
 
-    if (new Date() > user.emailVerificationCodeExpiry) {
-      return res.status(400).json({ error: "Verification code has expired" })
-    }
+    // NOW create the actual user in the database
+    const user = await User.create({
+      name: tempReg.name,
+      email: tempReg.email,
+      password: tempReg.password,
+      role: 'user',
+      isEmailVerified: true, // Email is verified
+      emailVerificationCode: null,
+      emailVerificationCodeExpiry: null,
+    });
 
-    // Mark email as verified
-    await User.update(
-      {
-        isEmailVerified: true,
-        emailVerificationCode: null,
-        emailVerificationCodeExpiry: null,
+    // Delete temp registration
+    await tempReg.destroy();
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.json({
+      msg: "Email verified successfully. Account created!",
+      token,
+      userId: user.id,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
       },
-      { where: { id: user.id } }
-    )
-
-    res.json({ msg: "Email verified successfully" })
+    });
   } catch (error) {
-    console.error("Error in verify-email:", error)
-    res.status(500).json({ error: error.message })
+    console.error("Error in verify-email:", error);
+    res.status(500).json({ error: error.message });
   }
 })
 
 // Resend verification code
 router.post("/resend-verification-code", async (req, res) => {
   try {
-    const { email } = req.body
+    const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ error: "Email is required" })
+      return res.status(400).json({ error: "Email is required" });
     }
 
-    const user = await User.findOne({ where: { email } })
-    if (!user) {
-      return res.status(404).json({ error: "User not found" })
-    }
-
-    if (user.isEmailVerified) {
-      return res.json({ msg: "Email already verified" })
+    // Check if it's a temp registration
+    const tempReg = await TempRegistration.findOne({ where: { email } });
+    if (!tempReg) {
+      return res.status(404).json({ error: "Registration not found. Please register again." });
     }
 
     // Generate new verification code
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
-    const verificationCodeExpiry = new Date(Date.now() + 15 * 60000) // 15 minutes
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCodeExpiry = new Date(Date.now() + 15 * 60000); // 15 minutes
 
-    await User.update(
+    await TempRegistration.update(
       {
-        emailVerificationCode: verificationCode,
-        emailVerificationCodeExpiry: verificationCodeExpiry,
+        verificationCode,
+        verificationCodeExpiry,
       },
-      { where: { id: user.id } }
-    )
+      { where: { id: tempReg.id } }
+    );
 
     // Send verification email
-    await sendVerificationEmail(email, verificationCode)
+    await sendVerificationEmail(email, verificationCode);
 
-    res.json({ msg: "Verification code sent to your email" })
+    res.json({ msg: "Verification code sent to your email" });
   } catch (error) {
-    console.error("Error in resend-verification-code:", error)
-    res.status(500).json({ error: error.message })
+    console.error("Error in resend-verification-code:", error);
+    res.status(500).json({ error: error.message });
   }
 })
 
