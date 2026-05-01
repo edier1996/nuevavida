@@ -122,6 +122,25 @@ const MyRequests = () => {
     loadMessages();
   }, [selectedConversation, messagesByConversation]);
 
+  // ── Auto-polling: refresca mensajes de la conversación activa cada 4s ──────
+  useEffect(() => {
+    if (!selectedConversation || !user) return;
+    const poll = async () => {
+      if (document.visibilityState === "hidden") return;
+      try {
+        const result = await fetchConversationMessages(selectedConversation.id);
+        setMessagesByConversation((prev) => ({
+          ...prev,
+          [selectedConversation.id]: result.messages,
+        }));
+      } catch {
+        // ignorar errores de red durante el polling
+      }
+    };
+    const interval = setInterval(poll, 4000);
+    return () => clearInterval(interval);
+  }, [selectedConversation, user]);
+
   const selectedMessages = useMemo(() => {
     if (!selectedConversation) return [];
     return messagesByConversation[selectedConversation.id] || [];

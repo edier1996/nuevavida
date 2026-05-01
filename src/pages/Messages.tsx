@@ -145,6 +145,32 @@ const Messages = () => {
     }
   }, [conversationViews, selectedConversationId]);
 
+  // ── Auto-polling: refresca mensajes de la conversación activa cada 4s ──────
+
+  useEffect(() => {
+    if (!selectedConversationId || !user) return;
+    const poll = async () => {
+      if (document.visibilityState === "hidden") return;
+      try {
+        const { messages } = await fetchConversationMessages(selectedConversationId);
+        setConversationViews((prev) =>
+          prev.map((v) => {
+            if (v.conversation.id !== selectedConversationId) return v;
+            const lastMsg = messages[messages.length - 1] ?? null;
+            const unread = messages.filter(
+              (m) => m.senderId !== user.id && !m.read
+            ).length;
+            return { ...v, messages, lastMessage: lastMsg, unreadCount: unread };
+          })
+        );
+      } catch {
+        // ignorar errores de red durante el polling
+      }
+    };
+    const interval = setInterval(poll, 4000);
+    return () => clearInterval(interval);
+  }, [selectedConversationId, user]);
+
   // ── Derived state ──────────────────────────────────────────────────────────
 
   const selectedView = useMemo(
