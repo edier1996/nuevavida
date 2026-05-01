@@ -86,7 +86,7 @@ const ProductDetail = () => {
     reader.readAsDataURL(file);
   };
 
-  const submitRequest = () => {
+  const submitRequest = async () => {
     if (!isAuthenticated) {
       navigate("/login");
       return;
@@ -118,7 +118,7 @@ const ProductDetail = () => {
       `Ciudad del producto: ${product.city}` +
       (firstImageUrl ? `\nImagen: ${firstImageUrl}` : "");
 
-    const created = addRequest({
+    const created = await addRequest({
       productId: product.id,
       productTitle: product.title,
       productCity: product.city,

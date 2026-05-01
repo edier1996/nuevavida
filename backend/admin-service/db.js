@@ -10,5 +10,6 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
 })
 
 const Report = require('./models/report')(sequelize)
+const ProductRequest = require('./models/request')(sequelize)
 
-module.exports = { sequelize, Report }
+module.exports = { sequelize, Report, ProductRequest }
