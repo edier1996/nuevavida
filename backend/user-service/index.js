@@ -3,6 +3,7 @@ const dotenv = require("dotenv")
 const cors = require("cors")
 const { sequelize, User } = require('./db')
 const userRoutes = require("./routes/user")
+const { sendPasswordResetEmail, sendVerificationEmail } = require('./config/email')
 
 const PORT = process.env.PORT || 5000
 
@@ -50,6 +51,7 @@ const initAdmin = async () => {
         email: 'nuevavida1327@gmail.com',
         password: 'nevavida13272026',
         role: 'admin',
+        isEmailVerified: true,
       });
       console.log('✅ Admin user created');
     } else {

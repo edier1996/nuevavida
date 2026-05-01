@@ -35,4 +35,21 @@ const sendPasswordResetEmail = async (email, resetToken, resetLink) => {
   return transporter.sendMail(mailOptions);
 };
 
-module.exports = { sendPasswordResetEmail };
+const sendVerificationEmail = async (email, verificationCode) => {
+  const mailOptions = {
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: email,
+    subject: 'Verifica tu email - Nueva Vida',
+    html: `
+      <h2>Bienvenido a Nueva Vida</h2>
+      <p>Tu código de verificación es:</p>
+      <h1 style="color: #007bff; font-size: 32px; letter-spacing: 5px;">${verificationCode}</h1>
+      <p>Este código expira en 15 minutos.</p>
+      <p>Si no creaste esta cuenta, ignora este correo.</p>
+    `,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+module.exports = { sendPasswordResetEmail, sendVerificationEmail };
