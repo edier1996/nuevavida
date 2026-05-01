@@ -7,7 +7,8 @@ module.exports = (sequelize) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    // Stored as JSON array of two UUIDs: [requesterId, donorId]
+    // Stored as JSON array of two strings: [requesterId, donorId]
+    // Accepts any string format (UUID, "admin-1", "worker-1", timestamps, etc.)
     participantIds: {
       type: DataTypes.JSON,
       allowNull: false,
@@ -36,7 +37,7 @@ module.exports = (sequelize) => {
       allowNull: false,
     },
     senderId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       allowNull: false,
     },
     senderName: {

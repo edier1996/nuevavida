@@ -18,8 +18,14 @@ router.post("/create", async (req, res) => {
   } = req.body
 
   try {
-    if (!senderId || !senderName || !content) {
-      return res.status(400).json({ error: "senderId, senderName and content are required" })
+    if (!senderId || typeof senderId !== "string" || senderId.trim() === "") {
+      return res.status(400).json({ error: "senderId must be a non-empty string" })
+    }
+    if (!senderName || typeof senderName !== "string" || senderName.trim() === "") {
+      return res.status(400).json({ error: "senderName must be a non-empty string" })
+    }
+    if (!content || typeof content !== "string" || content.trim() === "") {
+      return res.status(400).json({ error: "content must be a non-empty string" })
     }
 
     let conversation
@@ -29,8 +35,13 @@ router.post("/create", async (req, res) => {
       if (!conversation) return res.status(404).json({ msg: "Conversation not found" })
     } else {
       // Create a new conversation
-      if (!participantIds || !Array.isArray(participantIds) || participantIds.length !== 2) {
-        return res.status(400).json({ error: "participantIds must be an array of exactly 2 user IDs when creating a new conversation" })
+      if (
+        !participantIds ||
+        !Array.isArray(participantIds) ||
+        participantIds.length !== 2 ||
+        !participantIds.every((id) => typeof id === "string" && id.trim() !== "")
+      ) {
+        return res.status(400).json({ error: "participantIds must be an array of exactly 2 non-empty strings when creating a new conversation" })
       }
       conversation = await Conversation.create({
         participantIds,
