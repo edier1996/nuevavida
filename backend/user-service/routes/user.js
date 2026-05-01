@@ -40,12 +40,8 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: "Email already registered" });
     }
 
-    // Check if temp registration already exists
-    const existingTemp = await TempRegistration.findOne({ where: { email } });
-    if (existingTemp) {
-      // Delete old temp registration
-      await existingTemp.destroy();
-    }
+    // Delete any existing temp registration with this email FIRST
+    await TempRegistration.destroy({ where: { email } });
 
     // Generate 6-digit verification code
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
