@@ -1,24 +1,19 @@
-﻿import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { mockProducts, type Product } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/sonner";
 import logo from "@/assets/logo.jpeg";
-
-interface Message {
-  id: string;
-  from: string;
-  to: string;
-  fromName?: string;
-  toName?: string;
-  productId: string;
-  subject: string;
-  content: string;
-  image?: string;
-  timestamp: string;
-  read: boolean;
-}
+import {
+  fetchMessages as apiFetchMessages,
+  sendMessage as apiSendMessage,
+  deleteMessage as apiDeleteMessage,
+  deleteConversation as apiDeleteConversation,
+  markAsRead as apiMarkAsRead,
+  type Message,
+} from "@/lib/messaging-api";
 
 const PLATFORM_USER_ID = "platform";
 const PLATFORM_USER_NAME = "Nueva Vida (Plataforma)";
@@ -28,68 +23,81 @@ const Messages = () => {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [allProducts, setAllProducts] = useState<Product[]>(mockProducts);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const { user, isAuthenticated } = useAuth();
   const location = useLocation();
+  const hasFetched = useRef(false);
 
-  const persistMessages = (list: Message[]) => {
-    const serialized = JSON.stringify(list);
-    try {
-      localStorage.setItem("messages", serialized);
-      localStorage.setItem("messages_backup", serialized);
-    } catch {
-      const trimmed = list.slice(-200);
-      const serializedTrimmed = JSON.stringify(trimmed);
-      try {
-        localStorage.setItem("messages", serializedTrimmed);
-        localStorage.setItem("messages_backup", serializedTrimmed);
-      } catch {
-        console.error("No se pudieron guardar los mensajes (cuota).");
-      }
-    }
-  };
+  const markAsRead = useCallback(
+    async (conversationKey: string) => {
+      const otherUserId = conversationKey;
+      const userId = user?.id;
+      const userEmail = user?.email;
 
-  const markAsRead = useCallback((conversationKey: string) => {
-    const otherUserId = conversationKey;
-    const userId = user?.id;
-    const userEmail = user?.email;
+      // Collect IDs of unread messages in this conversation to mark via API
+      setMessages((prev) => {
+        const toMark = prev.filter(
+          (msg) =>
+            (msg.from === otherUserId || msg.from === userEmail) &&
+            (msg.to === userId || msg.to === userEmail) &&
+            !msg.read
+        );
 
-    setMessages((prev) => {
-      let changed = false;
-      const updated = prev.map((msg) => {
-        if (
-          (msg.from === otherUserId || msg.from === userEmail) &&
-          (msg.to === userId || msg.to === userEmail) &&
-          !msg.read
-        ) {
-          changed = true;
-          return { ...msg, read: true };
+        if (toMark.length > 0) {
+          // Fire-and-forget API calls; update local state optimistically
+          toMark.forEach((msg) => {
+            apiMarkAsRead(msg.id).catch((err) => {
+              console.error("Error al marcar mensaje como leído:", err);
+            });
+          });
+
+          return prev.map((msg) =>
+            toMark.some((m) => m.id === msg.id) ? { ...msg, read: true } : msg
+          );
         }
-        return msg;
+
+        return prev;
       });
-
-      if (changed) {
-        persistMessages(updated);
-      }
-
-      return changed ? updated : prev;
-    });
-  }, [user]);
+    },
+    [user]
+  );
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user || hasFetched.current) return;
+    hasFetched.current = true;
 
-    const storedMessages = localStorage.getItem("messages");
-    const backupMessages = localStorage.getItem("messages_backup");
-    const parsed = storedMessages
-      ? JSON.parse(storedMessages)
-      : backupMessages
-        ? JSON.parse(backupMessages)
-        : [];
-    setMessages(parsed);
+    const loadMessages = async () => {
+      setIsLoading(true);
+      try {
+        const fetched = await apiFetchMessages(user.id);
+        setMessages(fetched);
+      } catch (err) {
+        console.error("Error al cargar mensajes desde la API:", err);
+        // Fallback: try to load from localStorage cache
+        const storedMessages = localStorage.getItem("messages");
+        const backupMessages = localStorage.getItem("messages_backup");
+        const cached = storedMessages
+          ? JSON.parse(storedMessages)
+          : backupMessages
+            ? JSON.parse(backupMessages)
+            : [];
+        if (cached.length > 0) {
+          setMessages(cached);
+          toast.warning("No se pudo conectar al servidor. Mostrando mensajes en caché.");
+        } else {
+          toast.error("No se pudieron cargar los mensajes. Intenta de nuevo más tarde.");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadMessages();
 
     const userProducts = JSON.parse(localStorage.getItem("products") || "[]");
     setAllProducts([...mockProducts, ...userProducts]);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   const conversations = useMemo(() => {
     if (!user) return [];
@@ -192,54 +200,99 @@ const Messages = () => {
     }
   }, [conversations, selectedConversation, markAsRead]);
 
-  const sendMessage = () => {
-    if (!newMessage.trim() || !selectedConversation || !user) return;
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedConversation || !user || isSending) return;
 
     const otherUserId = selectedConversation;
-    const message: Message = {
-      id: Date.now().toString(),
+    const optimisticMessage: Message = {
+      id: `optimistic-${Date.now()}`,
       from: user.id,
       to: otherUserId,
       fromName: user.name,
       toName: otherUserId === PLATFORM_USER_ID ? PLATFORM_USER_NAME : otherUserId,
       productId: "general",
-      subject: `Interés en producto`,
+      subject: "Interés en producto",
       content: newMessage,
       timestamp: new Date().toISOString(),
       read: false,
     };
 
-    const updatedMessages = [...messages, message];
-
-    setMessages(updatedMessages);
-    persistMessages(updatedMessages);
+    // Optimistic update
+    setMessages((prev) => [...prev, optimisticMessage]);
     setNewMessage("");
+    setIsSending(true);
+
+    try {
+      const { id: _optimisticId, ...payload } = optimisticMessage;
+      const saved = await apiSendMessage(payload);
+      // Replace optimistic entry with the server-confirmed message
+      setMessages((prev) =>
+        prev.map((m) => (m.id === optimisticMessage.id ? saved : m))
+      );
+    } catch (err) {
+      console.error("Error al enviar mensaje:", err);
+      toast.error("No se pudo enviar el mensaje. Intenta de nuevo.");
+      // Roll back optimistic update
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
+      setNewMessage(optimisticMessage.content);
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const deleteMessage = (id: string) => {
-    setMessages((prev) => {
-      const updated = prev.filter((m) => m.id !== id);
-      persistMessages(updated);
-      return updated;
-    });
+  const deleteMessage = async (id: string) => {
+    // Optimistic removal
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+
+    try {
+      await apiDeleteMessage(id);
+    } catch (err) {
+      console.error("Error al eliminar mensaje:", err);
+      toast.error("No se pudo eliminar el mensaje. Intenta de nuevo.");
+      // Re-fetch to restore state
+      if (user) {
+        try {
+          const fetched = await apiFetchMessages(user.id);
+          setMessages(fetched);
+        } catch {
+          // Silently ignore secondary fetch failure
+        }
+      }
+    }
   };
 
-  const deleteConversation = (conversationKey: string) => {
+  const deleteConversation = async (conversationKey: string) => {
     if (!user) return;
     const otherUserId = conversationKey;
-    setMessages((prev) => {
-      const updated = prev.filter((m) => {
+
+    // Optimistic removal
+    setMessages((prev) =>
+      prev.filter((m) => {
         const involvesPair =
-          ((m.from === user.id || m.from === user.email) && (m.to === otherUserId || m.to === PLATFORM_USER_ID)) ||
-          ((m.to === user.id || m.to === user.email) && (m.from === otherUserId || m.from === PLATFORM_USER_ID)) ||
+          ((m.from === user.id || m.from === user.email) &&
+            (m.to === otherUserId || m.to === PLATFORM_USER_ID)) ||
+          ((m.to === user.id || m.to === user.email) &&
+            (m.from === otherUserId || m.from === PLATFORM_USER_ID)) ||
           (m.from === otherUserId && m.to === PLATFORM_USER_ID) ||
           (m.to === otherUserId && m.from === PLATFORM_USER_ID);
         return !involvesPair;
-      });
-      persistMessages(updated);
-      return updated;
-    });
+      })
+    );
     setSelectedConversation(null);
+
+    try {
+      await apiDeleteConversation(conversationKey);
+    } catch (err) {
+      console.error("Error al eliminar conversación:", err);
+      toast.error("No se pudo eliminar la conversación en el servidor.");
+      // Re-fetch to restore state
+      try {
+        const fetched = await apiFetchMessages(user.id);
+        setMessages(fetched);
+      } catch {
+        // Silently ignore secondary fetch failure
+      }
+    }
   };
 
   const startConversation = (product: Product) => {
@@ -290,7 +343,19 @@ const Messages = () => {
             <div className="lg:col-span-1">
               <h2 className="text-lg font-semibold text-foreground mb-4">Conversaciones</h2>
               <div className="space-y-2">
-                {conversations.length > 0 ? (
+                {isLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="p-4 rounded-lg border border-secondary bg-white animate-pulse"
+                      >
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                        <div className="h-3 bg-gray-100 rounded w-1/2" />
+                      </div>
+                    ))}
+                  </div>
+                ) : conversations.length > 0 ? (
                   conversations.map((conv) => (
                     <div
                       key={conv.key}
@@ -411,17 +476,18 @@ const Messages = () => {
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        onKeyPress={(e) => e.key === 'Enter' && !isSending && sendMessage()}
                         placeholder="Escribe un mensaje..."
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        disabled={isSending}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60"
                       />
                       <Button
                         onClick={sendMessage}
-                        disabled={!newMessage.trim()}
+                        disabled={!newMessage.trim() || isSending}
                         size="sm"
-                        className="bg-green-500 hover:bg-green-600 text-white rounded-full px-4"
+                        className="bg-green-500 hover:bg-green-600 text-white rounded-full px-4 disabled:opacity-60"
                       >
-                        Enviar
+                        {isSending ? "Enviando..." : "Enviar"}
                       </Button>
                     </div>
                   </div>
