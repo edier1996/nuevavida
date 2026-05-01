@@ -1,5 +1,23 @@
 const WebSocket = require('ws')
 
+// Map conversationId -> Set of WebSocket clients (module-level so routes can broadcast)
+const rooms = new Map()
+
+/**
+ * Broadcast a JSON payload to all clients currently in a conversation room.
+ * Called by the REST route after persisting a message to the DB.
+ */
+function broadcastToRoom(conversationId, payload) {
+  const room = rooms.get(conversationId)
+  if (!room) return
+  const msg = JSON.stringify(payload)
+  room.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(msg)
+    }
+  })
+}
+
 /**
  * Sets up a WebSocket server attached to the given HTTP server.
  * Clients connect and send JSON messages of the form:
@@ -10,9 +28,6 @@ const WebSocket = require('ws')
  */
 function setupWebSocket(server) {
   const wss = new WebSocket.Server({ server })
-
-  // Map conversationId -> Set of WebSocket clients
-  const rooms = new Map()
 
   wss.on('connection', (ws) => {
     let currentRoom = null
@@ -98,4 +113,4 @@ function setupWebSocket(server) {
   return wss
 }
 
-module.exports = setupWebSocket
+module.exports = { setupWebSocket, broadcastToRoom }

@@ -145,7 +145,88 @@ const Messages = () => {
     }
   }, [conversationViews, selectedConversationId]);
 
-  // ── Auto-polling: refresca mensajes de la conversación activa cada 4s ──────
+  // ── WebSocket: mensajes en tiempo real ────────────────────────────────────
+
+  useEffect(() => {
+    if (!selectedConversationId || !user) return;
+
+    // Derivar URL WebSocket desde la URL HTTP del messaging-service
+    const base = (
+      import.meta.env.VITE_MESSAGING_API_BASE_URL ||
+      import.meta.env.VITE_API_BASE_URL ||
+      ""
+    ).trim().replace(/\/+$/, "");
+
+    if (!base) return; // sin URL, caer en polling
+
+    const wsUrl = base.replace(/^https:\/\//i, "wss://").replace(/^http:\/\//i, "ws://");
+
+    let ws: WebSocket;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch {
+        return; // entorno no soporta WebSocket, usar polling
+      }
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: "join", conversationId: selectedConversationId }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data as string);
+          if (data.type === "message" && data.conversationId === selectedConversationId) {
+            const incomingMsg: Message = data.message;
+            setConversationViews((prev) =>
+              prev.map((v) => {
+                if (v.conversation.id !== selectedConversationId) return v;
+                // Evitar duplicados (optimistic + real)
+                const alreadyExists = v.messages.some(
+                  (m) => m.id === incomingMsg.id || m.id.startsWith("optimistic-")
+                );
+                const filtered = v.messages.filter((m) => !m.id.startsWith("optimistic-"));
+                const updated = alreadyExists
+                  ? filtered.map((m) => (m.id === incomingMsg.id ? incomingMsg : m))
+                  : [...filtered, incomingMsg];
+                return {
+                  ...v,
+                  messages: updated,
+                  lastMessage: updated[updated.length - 1] ?? null,
+                  unreadCount: updated.filter((m) => m.senderId !== user.id && !m.read).length,
+                };
+              })
+            );
+          }
+        } catch {
+          // ignorar frames mal formados
+        }
+      };
+
+      ws.onclose = () => {
+        // Reconectar después de 3s si sigue seleccionada la misma conversación
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) {
+        ws.onclose = null; // evitar reconexión al desmontar
+        ws.close();
+      }
+    };
+  }, [selectedConversationId, user]);
+
+  // ── Polling de respaldo (cada 8s) — cubre casos sin WebSocket ─────────────
 
   useEffect(() => {
     if (!selectedConversationId || !user) return;
@@ -167,7 +248,7 @@ const Messages = () => {
         // ignorar errores de red durante el polling
       }
     };
-    const interval = setInterval(poll, 4000);
+    const interval = setInterval(poll, 8000);
     return () => clearInterval(interval);
   }, [selectedConversationId, user]);
 

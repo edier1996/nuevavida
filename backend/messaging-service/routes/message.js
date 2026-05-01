@@ -1,6 +1,7 @@
 const express = require("express")
 const { Op } = require("sequelize")
 const { Conversation, Message } = require("../db")
+const { broadcastToRoom } = require("../websocket")
 
 const router = express.Router()
 
@@ -55,6 +56,13 @@ router.post("/create", async (req, res) => {
       senderId,
       senderName,
       content,
+    })
+
+    // Notificar en tiempo real a todos los clientes WebSocket en esta conversación
+    broadcastToRoom(conversation.id, {
+      type: 'message',
+      message: message.toJSON(),
+      conversationId: conversation.id,
     })
 
     res.status(201).json({ conversation, message })

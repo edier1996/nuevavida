@@ -4,7 +4,7 @@ const dotenv = require("dotenv")
 const cors = require("cors")
 const { sequelize } = require('./db')
 const messageRoutes = require("./routes/message")
-const setupWebSocket = require("./websocket")
+const setupWebSocket = require("./websocket").setupWebSocket
 
 dotenv.config()
 
