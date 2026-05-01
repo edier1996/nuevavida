@@ -1,4 +1,5 @@
 import Header from "@/components/Header";
+import React from "react";
 
 const Section = ({ emoji, title, children }: { emoji: string; title: string; children: React.ReactNode }) => (
   <div className="mt-10">
@@ -152,95 +153,6 @@ const About = () => (
           "Lo que ya no usas puede cambiar la vida de alguien más."
         </p>
       </div>
-
-      <hr className="mt-10 border-border" />
-
-      {/* Política de Privacidad */}
-      <Section emoji="🔐" title="POLÍTICA DE PRIVACIDAD">
-        <p className="text-xs text-muted-foreground">Última actualización: Abril 2026</p>
-        <p>En Nueva Vida, respetamos y protegemos la privacidad de nuestros usuarios. Esta Política de Privacidad explica cómo recopilamos, usamos, almacenamos y protegemos su información personal cuando utiliza nuestra plataforma.</p>
-
-        <p className="font-semibold text-foreground mt-4">1. 📌 Información que recopilamos</p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>Nombre completo, correo electrónico, número de teléfono, ubicación</li>
-          <li>Información de perfil y publicaciones</li>
-          <li>Datos automáticos: IP, dispositivo, navegador, actividad en la plataforma</li>
-        </ul>
-
-        <p className="font-semibold text-foreground mt-4">2. 🎯 Uso de la información</p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>Registro y acceso a la plataforma</li>
-          <li>Conexión entre usuarios (donantes y receptores)</li>
-          <li>Mejorar la experiencia del usuario</li>
-          <li>Gestionar publicaciones y solicitudes</li>
-          <li>Enviar notificaciones importantes</li>
-          <li>Prevenir fraudes o actividades indebidas</li>
-        </ul>
-
-        <p className="font-semibold text-foreground mt-4">3. 🤝 Compartición de información</p>
-        <p>Nueva Vida no vende ni alquila datos personales. Podemos compartir información entre usuarios para coordinar entregas, con proveedores tecnológicos o cuando sea requerido por ley.</p>
-
-        <p className="font-semibold text-foreground mt-4">4. 🔒 Protección de datos</p>
-        <p>Implementamos medidas de seguridad técnicas y organizativas contra acceso no autorizado, pérdida, alteración o uso indebido de datos.</p>
-
-        <p className="font-semibold text-foreground mt-4">5. 🍪 Uso de Cookies</p>
-        <p>Utilizamos cookies para mejorar la navegación, recordar preferencias y analizar el uso de la plataforma.</p>
-
-        <p className="font-semibold text-foreground mt-4">6. 👤 Derechos del usuario</p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>Acceder a sus datos personales</li>
-          <li>Solicitar corrección o eliminación de su información</li>
-          <li>Retirar su consentimiento en cualquier momento</li>
-        </ul>
-        <p>Contacto: <a href="mailto:nuevavida1327@gmail.com" className="text-primary underline">nuevavida1327@gmail.com</a></p>
-
-        <p className="font-semibold text-foreground mt-4">7. ⏳ Conservación de datos</p>
-        <p>Los datos se conservan mientras el usuario tenga su cuenta activa o sea necesario para los fines descritos.</p>
-
-        <p className="font-semibold text-foreground mt-4">8. 👶 Menores de edad</p>
-        <p>La plataforma no está dirigida a menores sin autorización de sus padres o representantes legales.</p>
-
-        <p className="font-semibold text-foreground mt-4">9. 🔄 Cambios en la política</p>
-        <p>Nueva Vida puede actualizar esta política en cualquier momento. Se notificará a los usuarios sobre cambios relevantes.</p>
-
-        <p className="font-semibold text-foreground mt-4">10. 📞 Contacto</p>
-        <ul className="list-none space-y-1">
-          <li>📧 <a href="mailto:nuevavida1327@gmail.com" className="text-primary underline">nuevavida1327@gmail.com</a></li>
-          <li>📱 Tel: 3136320309</li>
-          <li>📷 Instagram: nuevavida</li>
-          <li>▶️ <a href="https://www.youtube.com/channel/UCCZ0CRGcRK9SPlStYaF-9WA" target="_blank" rel="noopener noreferrer" className="text-primary underline">YouTube: Nueva Vida</a></li>
-          <li>📍 Ubicación: Apartadó, Antioquia — Sede principal</li>
-        </ul>
-
-        <p className="mt-4 font-medium text-foreground">✔️ Al utilizar la plataforma Nueva Vida, el usuario acepta esta Política de Privacidad.</p>
-      </Section>
-
-      {/* Marco Legal */}
-      <Section emoji="⚖️" title="MARCO LEGAL Y AMBIENTAL">
-        <p className="font-semibold text-foreground">🌍 Referentes Internacionales</p>
-        <p>Nueva Vida se alinea con los Objetivos de Desarrollo Sostenible (ODS) de la ONU:</p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li>ODS 11: Ciudades y comunidades sostenibles</li>
-          <li>ODS 12: Producción y consumo responsable</li>
-          <li>ODS 13: Acción por el clima</li>
-        </ul>
-        <p>El Programa de las Naciones Unidas para el Medio Ambiente promueve la economía circular y la gestión responsable de residuos, principios clave de Nueva Vida.</p>
-
-        <p className="font-semibold text-foreground mt-4">🇨🇴 Marco Legal en Colombia</p>
-        <ul className="list-disc pl-5 space-y-1">
-          <li><strong>Ley 99 de 1993</strong> — Protección del medio ambiente. Respalda iniciativas que reduzcan el impacto ambiental.</li>
-          <li><strong>Ley 142 de 1994</strong> — Regula el manejo de residuos sólidos.</li>
-          <li><strong>Ley 1672 de 2013</strong> — Gestión responsable de residuos electrónicos.</li>
-          <li><strong>Ley 1480 de 2011</strong> — Protege los derechos de los usuarios.</li>
-          <li><strong>Ley 1581 de 2012</strong> — Regula el manejo de datos personales.</li>
-        </ul>
-
-        <p className="font-semibold text-foreground mt-4">♻️ Principio Clave: Economía Circular</p>
-        <p>Nueva Vida se basa en la economía circular: reducir residuos, reutilizar productos y extender la vida útil de los objetos. En lugar de desechar, se reintegra al ciclo de uso.</p>
-
-        <p className="font-semibold text-foreground mt-4">⚖️ Conclusión Legal</p>
-        <p>Nueva Vida está alineada con normativas ambientales nacionales, principios internacionales de sostenibilidad y derechos del consumidor y protección de datos. Es un proyecto legalmente respaldado, ambientalmente responsable y socialmente necesario.</p>
-      </Section>
 
     </article>
   </main>
