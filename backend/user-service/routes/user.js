@@ -56,13 +56,24 @@ router.post("/register", async (req, res) => {
       verificationCodeExpiry,
     });
 
-    // Send verification email
-    await sendVerificationEmail(email, verificationCode);
+    // Try to send verification email, but don't fail if it doesn't work
+    let emailSent = false;
+    try {
+      await sendVerificationEmail(email, verificationCode);
+      emailSent = true;
+      console.log(`✅ Verification email sent to ${email}`);
+    } catch (emailError) {
+      console.error(`❌ Failed to send verification email to ${email}:`, emailError.message);
+      // Don't throw - we still want to return success
+    }
 
     res.status(201).json({
-      msg: "Verification code sent to your email. Please verify to complete registration.",
+      msg: emailSent
+        ? "Verification code sent to your email. Please verify to complete registration."
+        : "Registration created. Check your email for verification code. If you don't receive it, use 'Resend Code'.",
       email: email,
       tempRegistrationId: tempReg.id,
+      emailSent: emailSent,
     });
   } catch (error) {
     console.error("Error in register:", error);
@@ -220,10 +231,23 @@ router.post("/resend-verification-code", async (req, res) => {
       { where: { id: tempReg.id } }
     );
 
-    // Send verification email
-    await sendVerificationEmail(email, verificationCode);
+    // Try to send verification email
+    let emailSent = false;
+    try {
+      await sendVerificationEmail(email, verificationCode);
+      emailSent = true;
+      console.log(`✅ Verification email resent to ${email}`);
+    } catch (emailError) {
+      console.error(`❌ Failed to resend verification email to ${email}:`, emailError.message);
+      // Don't throw - we still want to return success
+    }
 
-    res.json({ msg: "Verification code sent to your email" });
+    res.json({
+      msg: emailSent
+        ? "Verification code sent to your email"
+        : "Code generated but email delivery failed. Check your spam folder or try again.",
+      emailSent: emailSent,
+    });
   } catch (error) {
     console.error("Error in resend-verification-code:", error);
     res.status(500).json({ error: error.message });
