@@ -11,7 +11,6 @@ import {
   getRequests,
   updateRequestStatus,
   type ProductRequest,
-  type RequestStatus,
 } from "@/lib/requests";
 import { sendMessage as sendMessageApi } from "@/lib/messaging-api";
 
@@ -45,6 +44,7 @@ const WorkerDashboard = () => {
   const [inquiries, setInquiries] = useState<ProductRequest[]>([]);
   const [replies, setReplies] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [busyProductId, setBusyProductId] = useState<string | null>(null);
 
   if (!user || user.role !== "worker") {
     return <div>No tienes permisos para acceder a esta pagina.</div>;
@@ -77,10 +77,17 @@ const WorkerDashboard = () => {
     loadInquiries();
   }, []);
 
-  const changeStatus = async (id: string, status: RequestStatus) => {
+  const changeStatus = async (id: string, status: ProductRequest["status"]) => {
     try {
       const updated = await updateRequestStatus(id, status);
-      setInquiries(updated);
+      const filtered = updated
+        .filter((r) => r.status !== "rejected")
+        .sort(
+          (a, b) =>
+            b.score - a.score ||
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      setInquiries(filtered);
     } catch (err) {
       toast({
         title: "Error",
@@ -118,7 +125,7 @@ const WorkerDashboard = () => {
       setReplies((prev) => ({ ...prev, [inq.id]: "" }));
       toast({
         title: "Mensaje enviado",
-        description: "El solicitante recibira tu respuesta en Mensajes.",
+        description: "El solicitante recibira tu respuesta en mensajes.",
       });
     } catch (err) {
       toast({
@@ -128,6 +135,95 @@ const WorkerDashboard = () => {
       });
     }
   };
+
+  const selectBeneficiary = async (selected: ProductRequest) => {
+    if (!user) return;
+    setBusyProductId(selected.productId);
+
+    try {
+      // 1) Select winner
+      await updateRequestStatus(selected.id, "selected");
+
+      // 2) Reject competing requests for the same product
+      const competitors = inquiries.filter(
+        (r) =>
+          r.productId === selected.productId &&
+          r.id !== selected.id &&
+          r.status !== "delivered" &&
+          r.status !== "rejected"
+      );
+
+      for (const competitor of competitors) {
+        await updateRequestStatus(competitor.id, "rejected");
+      }
+
+      // 3) Notify winner and others through chat API
+      try {
+        await sendMessageApi({
+          participantIds: [user.id, selected.requesterId],
+          senderId: user.id,
+          senderName: user.name,
+          content: `Tu solicitud para "${selected.productTitle}" fue seleccionada. Pronto coordinaremos la entrega.`,
+          productId: selected.productId,
+          orderId: selected.id,
+        });
+      } catch {
+        // Non-blocking notification failure.
+      }
+
+      for (const competitor of competitors) {
+        try {
+          await sendMessageApi({
+            participantIds: [user.id, competitor.requesterId],
+            senderId: user.id,
+            senderName: user.name,
+            content: `Tu solicitud para "${competitor.productTitle}" no fue seleccionada en esta ocasion. Gracias por participar.`,
+            productId: competitor.productId,
+            orderId: competitor.id,
+          });
+        } catch {
+          // Non-blocking notification failure.
+        }
+      }
+
+      await loadInquiries();
+      toast({
+        title: "Beneficiario seleccionado",
+        description: "Se selecciono un solicitante y se cerraron las demas solicitudes de ese producto.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al seleccionar beneficiario",
+        description: err instanceof Error ? err.message : "No se pudo completar la seleccion.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyProductId(null);
+    }
+  };
+
+  const groupedByProduct = useMemo(() => {
+    const groups = new Map<string, ProductRequest[]>();
+    inquiries.forEach((inquiry) => {
+      const list = groups.get(inquiry.productId) || [];
+      list.push(inquiry);
+      groups.set(inquiry.productId, list);
+    });
+
+    return Array.from(groups.values())
+      .map((group) =>
+        group.sort(
+          (a, b) =>
+            b.score - a.score ||
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        )
+      )
+      .sort((a, b) => {
+        const newestA = Math.max(...a.map((x) => new Date(x.createdAt).getTime()));
+        const newestB = Math.max(...b.map((x) => new Date(x.createdAt).getTime()));
+        return newestB - newestA;
+      });
+  }, [inquiries]);
 
   const stats = useMemo(
     () => ({
@@ -183,68 +279,104 @@ const WorkerDashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Solicitudes entrantes</CardTitle>
+            <CardTitle>Solicitudes por producto</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading && <p className="text-sm text-muted-foreground">Cargando...</p>}
             <div className="space-y-4">
-              {inquiries.map((inquiry) => (
-                <div key={inquiry.id} className="border rounded-lg p-4 shadow-sm bg-white">
-                  <div className="flex justify-between items-start mb-2 gap-3">
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-lg">{inquiry.requesterName}</h3>
-                      <p className="text-sm text-muted-foreground">{inquiry.productTitle}</p>
-                      <p className="text-xs text-muted-foreground">{inquiry.requesterEmail}</p>
+              {groupedByProduct.length === 0 && !isLoading && (
+                <p className="text-sm text-muted-foreground">
+                  No hay solicitudes activas para analizar por el momento.
+                </p>
+              )}
+
+              {groupedByProduct.map((group) => {
+                const top = group[0];
+                const hasWinner = group.some((r) => r.status === "selected" || r.status === "delivered");
+                return (
+                  <div key={top.productId} className="border rounded-lg p-4 shadow-sm bg-white">
+                    <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
+                      <div>
+                        <h3 className="font-semibold text-lg">{top.productTitle}</h3>
+                        <p className="text-xs text-muted-foreground">{top.productCity || "Sin ciudad"} · {group.length} solicitudes</p>
+                      </div>
+                      {hasWinner && (
+                        <Badge className="bg-green-600">Beneficiario definido</Badge>
+                      )}
                     </div>
-                    <Badge className={statusColors[inquiry.status]}>{statusText(inquiry.status)}</Badge>
-                  </div>
 
-                  <p className="text-sm text-foreground mb-3 whitespace-pre-line">{inquiry.reason}</p>
+                    <div className="space-y-4">
+                      {group.map((inquiry, idx) => (
+                        <div key={inquiry.id} className="rounded-md border p-3 bg-gray-50">
+                          <div className="flex flex-wrap justify-between items-start gap-2">
+                            <div>
+                              <p className="font-semibold">#{idx + 1} {inquiry.requesterName}</p>
+                              <p className="text-xs text-muted-foreground">{inquiry.requesterEmail}</p>
+                            </div>
+                            <Badge className={statusColors[inquiry.status]}>{statusText(inquiry.status)}</Badge>
+                          </div>
 
-                  <div className="grid gap-2 md:grid-cols-3 mb-3 text-xs text-muted-foreground">
-                    <div>Nivel: {inquiry.needLevel}</div>
-                    <div>Puntaje: {inquiry.score}</div>
-                    <div>Fecha: {new Date(inquiry.createdAt).toLocaleString()}</div>
-                  </div>
+                          <p className="text-sm mt-2 whitespace-pre-line">{inquiry.reason}</p>
 
-                  <div className="flex gap-2 mb-3">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => changeStatus(inquiry.id, "in_review")}
-                      disabled={inquiry.status === "in_review" || inquiry.status === "delivered"}
-                    >
-                      Tomar solicitud
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => changeStatus(inquiry.id, "selected")}
-                      disabled={inquiry.status === "selected" || inquiry.status === "delivered"}
-                    >
-                      Seleccionar
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => changeStatus(inquiry.id, "delivered")}
-                      disabled={inquiry.status === "delivered"}
-                    >
-                      Marcar resuelta
-                    </Button>
-                  </div>
+                          <div className="grid gap-2 md:grid-cols-4 mt-2 text-xs text-muted-foreground">
+                            <div>Nivel: {inquiry.needLevel}</div>
+                            <div>Puntaje: {inquiry.score}</div>
+                            <div>Hogar: {inquiry.householdSize || "N/A"}</div>
+                            <div>Fecha: {new Date(inquiry.createdAt).toLocaleString()}</div>
+                          </div>
 
-                  <div className="flex gap-2">
-                    <textarea
-                      value={replies[inquiry.id] || ""}
-                      onChange={(e) => setReplies((prev) => ({ ...prev, [inquiry.id]: e.target.value }))}
-                      placeholder="Responder al solicitante..."
-                      className="flex-1 rounded-md border p-2 text-sm"
-                      rows={2}
-                    />
-                    <Button onClick={() => sendReply(inquiry)}>Enviar</Button>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => changeStatus(inquiry.id, "in_review")}
+                              disabled={inquiry.status === "in_review" || inquiry.status === "selected" || inquiry.status === "delivered"}
+                            >
+                              Tomar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => selectBeneficiary(inquiry)}
+                              disabled={busyProductId === inquiry.productId || inquiry.status === "selected" || inquiry.status === "delivered"}
+                            >
+                              {busyProductId === inquiry.productId ? "Procesando..." : "Seleccionar beneficiario"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => changeStatus(inquiry.id, "rejected")}
+                              disabled={inquiry.status === "rejected" || inquiry.status === "selected" || inquiry.status === "delivered"}
+                            >
+                              Rechazar
+                            </Button>
+                            {(inquiry.status === "selected" || inquiry.status === "in_review") && (
+                              <Button
+                                size="sm"
+                                onClick={() => changeStatus(inquiry.id, "delivered")}
+                                disabled={inquiry.status === "delivered"}
+                              >
+                                Marcar entregado
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2 mt-3">
+                            <textarea
+                              value={replies[inquiry.id] || ""}
+                              onChange={(e) => setReplies((prev) => ({ ...prev, [inquiry.id]: e.target.value }))}
+                              placeholder="Responder al solicitante..."
+                              className="flex-1 rounded-md border p-2 text-sm"
+                              rows={2}
+                            />
+                            <Button onClick={() => sendReply(inquiry)}>Enviar</Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
