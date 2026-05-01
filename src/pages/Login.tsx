@@ -42,7 +42,7 @@ const Login = () => {
         title: "Éxito",
         description: "Cuenta creada. Verifica tu email para continuar.",
       });
-      navigate("/verify-email", { state: { email } });
+      navigate("/verify-email", { state: { email: result.email, emailSent: result.emailSent } });
     } else {
       setError(result.error || "No se pudo crear la cuenta.");
     }
