@@ -34,9 +34,9 @@ const corsOptions = {
   credentials: false,
 }
 
-app.use(express.json())
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
+app.use(express.json())
 
 // Routes
 app.use("/api/messages", messageRoutes)
