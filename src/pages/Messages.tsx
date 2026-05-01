@@ -1,310 +1,342 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { mockProducts, type Product } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import logo from "@/assets/logo.jpeg";
 import {
-  fetchMessages as apiFetchMessages,
+  fetchConversations,
+  fetchConversationMessages,
   sendMessage as apiSendMessage,
   deleteMessage as apiDeleteMessage,
-  deleteConversation as apiDeleteConversation,
   markAsRead as apiMarkAsRead,
+  type Conversation,
   type Message,
 } from "@/lib/messaging-api";
 
-const PLATFORM_USER_ID = "platform";
-const PLATFORM_USER_NAME = "Nueva Vida (Plataforma)";
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ConversationView {
+  conversation: Conversation;
+  messages: Message[];
+  otherUserId: string;
+  unreadCount: number;
+  lastMessage: Message | null;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 const Messages = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [conversationViews, setConversationViews] = useState<ConversationView[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
-  const [allProducts, setAllProducts] = useState<Product[]>(mockProducts);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const { user, isAuthenticated } = useAuth();
   const location = useLocation();
   const hasFetched = useRef(false);
 
-  const markAsRead = useCallback(
-    async (conversationKey: string) => {
-      const otherUserId = conversationKey;
-      const userId = user?.id;
-      const userEmail = user?.email;
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
-      // Collect IDs of unread messages in this conversation to mark via API
-      setMessages((prev) => {
-        const toMark = prev.filter(
-          (msg) =>
-            (msg.from === otherUserId || msg.from === userEmail) &&
-            (msg.to === userId || msg.to === userEmail) &&
-            !msg.read
-        );
-
-        if (toMark.length > 0) {
-          // Fire-and-forget API calls; update local state optimistically
-          toMark.forEach((msg) => {
-            apiMarkAsRead(msg.id).catch((err) => {
-              console.error("Error al marcar mensaje como leído:", err);
-            });
-          });
-
-          return prev.map((msg) =>
-            toMark.some((m) => m.id === msg.id) ? { ...msg, read: true } : msg
-          );
-        }
-
-        return prev;
-      });
+  /** Returns the other participant's ID in a two-person conversation. */
+  const getOtherUserId = useCallback(
+    (conv: Conversation): string => {
+      if (!user) return "";
+      return conv.participantIds.find((id) => id !== user.id) ?? conv.participantIds[0] ?? "";
     },
     [user]
   );
 
+  // ── Data loading ───────────────────────────────────────────────────────────
+
+  const loadConversations = useCallback(async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const conversations = await fetchConversations(user.id);
+
+      // Fetch messages for every conversation in parallel
+      const views = await Promise.all(
+        conversations.map(async (conv): Promise<ConversationView> => {
+          try {
+            const { messages } = await fetchConversationMessages(conv.id);
+            const unreadCount = messages.filter(
+              (m) => m.senderId !== user.id && !m.read
+            ).length;
+            const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+            return {
+              conversation: conv,
+              messages,
+              otherUserId: getOtherUserId(conv),
+              unreadCount,
+              lastMessage,
+            };
+          } catch {
+            return {
+              conversation: conv,
+              messages: [],
+              otherUserId: getOtherUserId(conv),
+              unreadCount: 0,
+              lastMessage: null,
+            };
+          }
+        })
+      );
+
+      // Sort by most recent activity
+      views.sort((a, b) => {
+        const aTime = a.lastMessage
+          ? new Date(a.lastMessage.createdAt).getTime()
+          : new Date(a.conversation.updatedAt).getTime();
+        const bTime = b.lastMessage
+          ? new Date(b.lastMessage.createdAt).getTime()
+          : new Date(b.conversation.updatedAt).getTime();
+        return bTime - aTime;
+      });
+
+      setConversationViews(views);
+    } catch (err) {
+      console.error("Error al cargar conversaciones:", err);
+      toast.error("No se pudieron cargar los mensajes. Intenta de nuevo más tarde.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, getOtherUserId]);
+
   useEffect(() => {
     if (!isAuthenticated || !user || hasFetched.current) return;
     hasFetched.current = true;
+    loadConversations();
+  }, [isAuthenticated, user, loadConversations]);
 
-    const loadMessages = async () => {
-      setIsLoading(true);
-      try {
-        const fetched = await apiFetchMessages(user.id);
-        setMessages(fetched);
-      } catch (err) {
-        console.error("Error al cargar mensajes desde la API:", err);
-        // Fallback: try to load from localStorage cache
-        const storedMessages = localStorage.getItem("messages");
-        const backupMessages = localStorage.getItem("messages_backup");
-        const cached = storedMessages
-          ? JSON.parse(storedMessages)
-          : backupMessages
-            ? JSON.parse(backupMessages)
-            : [];
-        if (cached.length > 0) {
-          setMessages(cached);
-          toast.warning("No se pudo conectar al servidor. Mostrando mensajes en caché.");
-        } else {
-          toast.error("No se pudieron cargar los mensajes. Intenta de nuevo más tarde.");
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // ── Conversation selection ─────────────────────────────────────────────────
 
-    loadMessages();
-
-    const userProducts = JSON.parse(localStorage.getItem("products") || "[]");
-    setAllProducts([...mockProducts, ...userProducts]);
-  }, [isAuthenticated, user]);
-
-  const conversations = useMemo(() => {
-    if (!user) return [];
-    const userId = user.id;
-    const userEmail = user.email;
-
-    const userMessages = messages.filter(
-      (msg) =>
-        msg.from === userId ||
-        msg.to === userId ||
-        msg.from === userEmail ||
-        msg.to === userEmail
-    );
-
-    const conversationMap = new Map<string, any>();
-
-    userMessages.forEach((msg) => {
-      const otherUserId = msg.from === userId || msg.from === userEmail ? msg.to : msg.from;
-      const otherUserName = msg.from === userId || msg.from === userEmail ? msg.toName || msg.to : msg.fromName || msg.from;
-      const productKey = msg.productId || "general";
-      const product = allProducts.find((p) => p.id === msg.productId);
-
-      const key = otherUserId; // un chat por usuario
-      if (!conversationMap.has(key)) {
-        conversationMap.set(key, {
-          key,
-          otherUser: otherUserName,
-          otherUserId,
-          lastProductId: productKey,
-          lastProduct: product,
-          lastMessage: msg,
-          unreadCount: msg.to === userId && !msg.read ? 1 : 0,
-          messages: [] as Message[],
-        });
-      }
-
-      const conv = conversationMap.get(key);
-      conv.messages.push(msg);
-      if (new Date(msg.timestamp).getTime() > new Date(conv.lastMessage.timestamp).getTime()) {
-        conv.lastMessage = msg;
-        conv.lastProductId = productKey;
-        conv.lastProduct = product;
-      }
-      if ((msg.to === userId || msg.to === userEmail) && !msg.read) {
-        conv.unreadCount++;
-      }
-    });
-
-    return Array.from(conversationMap.values()).sort((a, b) =>
-      new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime()
-    );
-  }, [messages, user, allProducts]);
-
-  // Selección inicial por query (?with)
+  // Auto-select from ?with=<otherUserId> query param or fall back to first conversation
   useEffect(() => {
+    if (conversationViews.length === 0) return;
+
     const params = new URLSearchParams(location.search);
     const withUser = params.get("with");
 
-    const desiredKey = withUser || null;
-    const fallbackKey = conversations[0]?.key;
-    const keyToUse = desiredKey || fallbackKey;
+    let target: ConversationView | undefined;
+    if (withUser) {
+      target = conversationViews.find((v) => v.otherUserId === withUser);
+    }
+    if (!target) {
+      target = conversationViews[0];
+    }
 
-    if (keyToUse) {
-      setSelectedConversation(keyToUse);
-      markAsRead(keyToUse);
+    if (target && selectedConversationId !== target.conversation.id) {
+      setSelectedConversationId(target.conversation.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, conversations, markAsRead]);
+  }, [location.search, conversationViews]);
 
-  const selectedConvMessages = useMemo(() => {
-    if (!selectedConversation || !user) return [];
-
-    const otherUserId = selectedConversation;
-    const userId = user.id;
-    const userEmail = user.email;
-
-    return messages
-      .filter((msg) => {
-        const isFromUser = msg.from === userId || msg.from === userEmail;
-        const isToUser = msg.to === userId || msg.to === userEmail;
-        const isFromOther = msg.from === otherUserId;
-        const isToOther = msg.to === otherUserId;
-        return (isFromUser && isToOther) || (isToUser && isFromOther);
-      })
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  }, [selectedConversation, messages, user]);
-
-  // Mantener selección válida
+  // Keep selection valid when conversations change
   useEffect(() => {
-    if (!selectedConversation && conversations.length > 0) {
-      setSelectedConversation(conversations[0].key);
-      markAsRead(conversations[0].key);
+    if (!selectedConversationId && conversationViews.length > 0) {
+      setSelectedConversationId(conversationViews[0].conversation.id);
     } else if (
-      selectedConversation &&
-      !conversations.find((c) => c.key === selectedConversation)
+      selectedConversationId &&
+      !conversationViews.find((v) => v.conversation.id === selectedConversationId)
     ) {
-      const next = conversations[0]?.key;
-      setSelectedConversation(next || null);
-      if (next) markAsRead(next);
+      setSelectedConversationId(conversationViews[0]?.conversation.id ?? null);
     }
-  }, [conversations, selectedConversation, markAsRead]);
+  }, [conversationViews, selectedConversationId]);
+
+  // ── Derived state ──────────────────────────────────────────────────────────
+
+  const selectedView = useMemo(
+    () => conversationViews.find((v) => v.conversation.id === selectedConversationId) ?? null,
+    [conversationViews, selectedConversationId]
+  );
+
+  // ── Mark as read ───────────────────────────────────────────────────────────
+
+  const markConversationAsRead = useCallback(
+    async (conversationId: string) => {
+      if (!user) return;
+
+      setConversationViews((prev) =>
+        prev.map((v) => {
+          if (v.conversation.id !== conversationId) return v;
+
+          const toMark = v.messages.filter((m) => m.senderId !== user.id && !m.read);
+          if (toMark.length === 0) return v;
+
+          // Fire-and-forget; update local state optimistically
+          toMark.forEach((m) => {
+            apiMarkAsRead(m.id).catch((err) =>
+              console.error("Error al marcar mensaje como leído:", err)
+            );
+          });
+
+          return {
+            ...v,
+            unreadCount: 0,
+            messages: v.messages.map((m) =>
+              toMark.some((tm) => tm.id === m.id) ? { ...m, read: true } : m
+            ),
+          };
+        })
+      );
+    },
+    [user]
+  );
+
+  const selectConversation = useCallback(
+    (conversationId: string) => {
+      setSelectedConversationId(conversationId);
+      markConversationAsRead(conversationId);
+    },
+    [markConversationAsRead]
+  );
+
+  // ── Send message ───────────────────────────────────────────────────────────
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !user || isSending) return;
+    if (!newMessage.trim() || !selectedConversationId || !user || isSending) return;
 
-    const otherUserId = selectedConversation;
+    const optimisticId = `optimistic-${Date.now()}`;
     const optimisticMessage: Message = {
-      id: `optimistic-${Date.now()}`,
-      from: user.id,
-      to: otherUserId,
-      fromName: user.name,
-      toName: otherUserId === PLATFORM_USER_ID ? PLATFORM_USER_NAME : otherUserId,
-      productId: "general",
-      subject: "Interés en producto",
+      id: optimisticId,
+      conversationId: selectedConversationId,
+      senderId: user.id,
+      senderName: user.name,
       content: newMessage,
-      timestamp: new Date().toISOString(),
       read: false,
+      createdAt: new Date().toISOString(),
     };
 
     // Optimistic update
-    setMessages((prev) => [...prev, optimisticMessage]);
+    setConversationViews((prev) =>
+      prev.map((v) =>
+        v.conversation.id === selectedConversationId
+          ? { ...v, messages: [...v.messages, optimisticMessage], lastMessage: optimisticMessage }
+          : v
+      )
+    );
     setNewMessage("");
     setIsSending(true);
 
     try {
-      const { id: _optimisticId, ...payload } = optimisticMessage;
-      const saved = await apiSendMessage(payload);
+      const { message: saved } = await apiSendMessage({
+        conversationId: selectedConversationId,
+        senderId: user.id,
+        senderName: user.name,
+        content: optimisticMessage.content,
+      });
+
       // Replace optimistic entry with the server-confirmed message
-      setMessages((prev) =>
-        prev.map((m) => (m.id === optimisticMessage.id ? saved : m))
+      setConversationViews((prev) =>
+        prev.map((v) =>
+          v.conversation.id === selectedConversationId
+            ? {
+                ...v,
+                messages: v.messages.map((m) => (m.id === optimisticId ? saved : m)),
+                lastMessage: saved,
+              }
+            : v
+        )
       );
     } catch (err) {
       console.error("Error al enviar mensaje:", err);
       toast.error("No se pudo enviar el mensaje. Intenta de nuevo.");
       // Roll back optimistic update
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticMessage.id));
+      setConversationViews((prev) =>
+        prev.map((v) =>
+          v.conversation.id === selectedConversationId
+            ? {
+                ...v,
+                messages: v.messages.filter((m) => m.id !== optimisticId),
+                lastMessage:
+                  v.messages.filter((m) => m.id !== optimisticId).slice(-1)[0] ?? null,
+              }
+            : v
+        )
+      );
       setNewMessage(optimisticMessage.content);
     } finally {
       setIsSending(false);
     }
   };
 
-  const deleteMessage = async (id: string) => {
+  // ── Delete message ─────────────────────────────────────────────────────────
+
+  const deleteMessage = async (messageId: string, conversationId: string) => {
     // Optimistic removal
-    setMessages((prev) => prev.filter((m) => m.id !== id));
+    setConversationViews((prev) =>
+      prev.map((v) => {
+        if (v.conversation.id !== conversationId) return v;
+        const remaining = v.messages.filter((m) => m.id !== messageId);
+        return {
+          ...v,
+          messages: remaining,
+          lastMessage: remaining.slice(-1)[0] ?? null,
+        };
+      })
+    );
 
     try {
-      await apiDeleteMessage(id);
+      await apiDeleteMessage(messageId);
     } catch (err) {
       console.error("Error al eliminar mensaje:", err);
       toast.error("No se pudo eliminar el mensaje. Intenta de nuevo.");
       // Re-fetch to restore state
-      if (user) {
-        try {
-          const fetched = await apiFetchMessages(user.id);
-          setMessages(fetched);
-        } catch {
-          // Silently ignore secondary fetch failure
-        }
-      }
+      loadConversations();
     }
   };
 
-  const deleteConversation = async (conversationKey: string) => {
-    if (!user) return;
-    const otherUserId = conversationKey;
+  // ── Start a new conversation ───────────────────────────────────────────────
 
-    // Optimistic removal
-    setMessages((prev) =>
-      prev.filter((m) => {
-        const involvesPair =
-          ((m.from === user.id || m.from === user.email) &&
-            (m.to === otherUserId || m.to === PLATFORM_USER_ID)) ||
-          ((m.to === user.id || m.to === user.email) &&
-            (m.from === otherUserId || m.from === PLATFORM_USER_ID)) ||
-          (m.from === otherUserId && m.to === PLATFORM_USER_ID) ||
-          (m.to === otherUserId && m.from === PLATFORM_USER_ID);
-        return !involvesPair;
-      })
-    );
-    setSelectedConversation(null);
+  /**
+   * Starts a conversation with another user by sending the first message.
+   * If a conversation with that user already exists, selects it instead.
+   */
+  const startConversation = async (
+    otherUserId: string,
+    firstMessage: string,
+    productId?: string
+  ) => {
+    if (!user || !firstMessage.trim()) return;
 
+    // Check if a conversation already exists
+    const existing = conversationViews.find((v) => v.otherUserId === otherUserId);
+    if (existing) {
+      selectConversation(existing.conversation.id);
+      return;
+    }
+
+    setIsSending(true);
     try {
-      await apiDeleteConversation(conversationKey);
+      const { conversation, message } = await apiSendMessage({
+        participantIds: [user.id, otherUserId],
+        senderId: user.id,
+        senderName: user.name,
+        content: firstMessage,
+        productId,
+      });
+
+      const newView: ConversationView = {
+        conversation,
+        messages: [message],
+        otherUserId,
+        unreadCount: 0,
+        lastMessage: message,
+      };
+
+      setConversationViews((prev) => [newView, ...prev]);
+      setSelectedConversationId(conversation.id);
     } catch (err) {
-      console.error("Error al eliminar conversación:", err);
-      toast.error("No se pudo eliminar la conversación en el servidor.");
-      // Re-fetch to restore state
-      try {
-        const fetched = await apiFetchMessages(user.id);
-        setMessages(fetched);
-      } catch {
-        // Silently ignore secondary fetch failure
-      }
+      console.error("Error al iniciar conversación:", err);
+      toast.error("No se pudo iniciar la conversación. Intenta de nuevo.");
+    } finally {
+      setIsSending(false);
     }
   };
 
-  const startConversation = (product: Product) => {
-    if (!user) return;
-
-    // Un solo chat con plataforma
-    const conversationKey = PLATFORM_USER_ID;
-    setSelectedConversation(conversationKey);
-
-    // Marcar mensajes como leídos
-    markAsRead(conversationKey);
-  };
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (!isAuthenticated) {
     return (
@@ -314,7 +346,10 @@ const Messages = () => {
           <p className="mt-2 text-sm text-muted-foreground">
             Debes iniciar sesión para ver tus mensajes.
           </p>
-          <Link to="/login" className="mt-6 inline-block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+          <Link
+            to="/login"
+            className="mt-6 inline-block rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
             Iniciar sesión
           </Link>
         </section>
@@ -339,7 +374,7 @@ const Messages = () => {
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-3">
-            {/* Lista de conversaciones */}
+            {/* ── Conversation list ── */}
             <div className="lg:col-span-1">
               <h2 className="text-lg font-semibold text-foreground mb-4">Conversaciones</h2>
               <div className="space-y-2">
@@ -355,30 +390,31 @@ const Messages = () => {
                       </div>
                     ))}
                   </div>
-                ) : conversations.length > 0 ? (
-                  conversations.map((conv) => (
+                ) : conversationViews.length > 0 ? (
+                  conversationViews.map((view) => (
                     <div
-                      key={conv.key}
-                      onClick={() => {
-                        setSelectedConversation(conv.key);
-                        markAsRead(conv.key);
-                      }}
+                      key={view.conversation.id}
+                      onClick={() => selectConversation(view.conversation.id)}
                       className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                        selectedConversation === conv.key
+                        selectedConversationId === view.conversation.id
                           ? "border-primary bg-white shadow-sm"
                           : "border-secondary hover:bg-secondary/40 bg-white"
                       }`}
                     >
                       <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{conv.otherUser}</p>
-                          {conv.lastProduct && (
-                            <p className="text-xs text-muted-foreground line-clamp-1">{conv.lastProduct.title}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">
+                            {view.otherUserId}
+                          </p>
+                          {view.lastMessage && (
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                              {view.lastMessage.content}
+                            </p>
                           )}
                         </div>
-                        {conv.unreadCount > 0 && (
-                          <Badge variant="destructive" className="ml-2">
-                            {conv.unreadCount}
+                        {view.unreadCount > 0 && (
+                          <Badge variant="destructive" className="ml-2 shrink-0">
+                            {view.unreadCount}
                           </Badge>
                         )}
                       </div>
@@ -387,10 +423,7 @@ const Messages = () => {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <p>No tienes conversaciones aún.</p>
-                    <Link
-                      to="/"
-                      className="mt-2 inline-block text-primary hover:underline"
-                    >
+                    <Link to="/" className="mt-2 inline-block text-primary hover:underline">
                       Explorar objetos
                     </Link>
                   </div>
@@ -398,85 +431,73 @@ const Messages = () => {
               </div>
             </div>
 
-            {/* Chat */}
+            {/* ── Chat panel ── */}
             <div className="lg:col-span-2">
-              {selectedConversation ? (
+              {selectedView ? (
                 <div className="h-[600px] flex flex-col bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  {/* Header */}
                   <div className="p-4 bg-green-500 text-white flex items-center justify-between gap-3">
                     <div>
-                      <h3 className="font-semibold">
-                        {conversations.find((c) => c.key === selectedConversation)?.otherUser || selectedConversation}
-                      </h3>
-                      {(() => {
-                        const conv = conversations.find((c) => c.key === selectedConversation);
-                        const product = conv?.lastProduct;
-                        return product ? (
-                          <p className="text-sm opacity-90 mt-1">
-                            {product.title}
-                          </p>
-                        ) : null;
-                      })()}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-white/90 text-green-700 hover:bg-white border border-white/60"
-                        onClick={() => deleteConversation(selectedConversation)}
-                      >
-                        Eliminar chat
-                      </Button>
+                      <h3 className="font-semibold">{selectedView.otherUserId}</h3>
                     </div>
                   </div>
 
+                  {/* Messages */}
                   <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50">
-                    {selectedConvMessages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex ${(msg.from === user?.id || msg.from === user?.email) ? 'justify-end' : 'justify-start'}`}
-                      >
+                    {selectedView.messages.map((msg) => {
+                      const isOwn = msg.senderId === user?.id;
+                      return (
                         <div
-                          className={`max-w-xs px-4 py-2 rounded-2xl shadow-sm ${
-                            (msg.from === user?.id || msg.from === user?.email)
-                              ? 'bg-green-500 text-white'
-                              : 'bg-white text-gray-800 border border-gray-200'
-                          }`}
+                          key={msg.id}
+                          className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
                         >
-                          <div className="flex items-start gap-2">
-                            <p className="text-sm flex-1 break-words">{msg.content}</p>
-                            <button
-                              className={`text-xs underline ${ (msg.from === user.id || msg.from === user.email) ? 'text-green-100' : 'text-gray-500' }`}
-                              onClick={() => deleteMessage(msg.id)}
-                            >
-                              Eliminar
-                            </button>
-                          </div>
-                          {msg.image && (
-                            <div className="mt-2">
-                              <img
-                                src={msg.image}
-                                alt="Adjunto"
-                                className="max-h-32 w-full object-cover rounded-md border border-white/20"
-                              />
+                          <div
+                            className={`max-w-xs px-4 py-2 rounded-2xl shadow-sm ${
+                              isOwn
+                                ? "bg-green-500 text-white"
+                                : "bg-white text-gray-800 border border-gray-200"
+                            }`}
+                          >
+                            {!isOwn && (
+                              <p className="text-xs font-semibold mb-1 opacity-70">
+                                {msg.senderName}
+                              </p>
+                            )}
+                            <div className="flex items-start gap-2">
+                              <p className="text-sm flex-1 break-words">{msg.content}</p>
+                              {isOwn && (
+                                <button
+                                  className="text-xs underline text-green-100 shrink-0"
+                                  onClick={() => deleteMessage(msg.id, msg.conversationId)}
+                                >
+                                  Eliminar
+                                </button>
+                              )}
                             </div>
-                          )}
-                          <p className={`text-xs mt-1 ${
-                            (msg.from === user?.id || msg.from === user?.email) ? 'text-green-100' : 'text-gray-500'
-                          }`}>
-                            {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                          </p>
+                            <p
+                              className={`text-xs mt-1 ${
+                                isOwn ? "text-green-100" : "text-gray-500"
+                              }`}
+                            >
+                              {new Date(msg.createdAt).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
+                  {/* Input */}
                   <div className="p-4 bg-gray-100 border-t border-gray-200">
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && !isSending && sendMessage()}
+                        onKeyPress={(e) => e.key === "Enter" && !isSending && sendMessage()}
                         placeholder="Escribe un mensaje..."
                         disabled={isSending}
                         className="flex-1 px-4 py-2 border border-gray-300 rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60"
@@ -508,4 +529,3 @@ const Messages = () => {
 };
 
 export default Messages;
-

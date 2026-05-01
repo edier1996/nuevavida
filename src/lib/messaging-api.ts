@@ -1,16 +1,25 @@
+// ─── Data shapes matching the backend MySQL models ───────────────────────────
+
+export interface Conversation {
+  id: string;
+  participantIds: string[];
+  productId?: string | null;
+  orderId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Message {
   id: string;
-  from: string;
-  to: string;
-  fromName?: string;
-  toName?: string;
-  productId: string;
-  subject: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
   content: string;
-  image?: string;
-  timestamp: string;
   read: boolean;
+  createdAt: string;
 }
+
+// ─── Base URL resolution ──────────────────────────────────────────────────────
 
 const resolveMessagingApiBaseUrl = () => {
   const raw =
@@ -43,9 +52,35 @@ const getAuthHeaders = (): HeadersInit => {
   };
 };
 
-export const fetchMessages = async (userId: string): Promise<Message[]> => {
+// ─── API functions ────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/messages/user/:userId
+ * Returns all conversations the user participates in, ordered by updatedAt DESC.
+ */
+export const fetchConversations = async (userId: string): Promise<Conversation[]> => {
   const response = await fetch(
-    `${API_BASE_URL}/api/messages?userId=${encodeURIComponent(userId)}`,
+    `${API_BASE_URL}/api/messages/user/${encodeURIComponent(userId)}`,
+    { headers: getAuthHeaders() }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Error al cargar conversaciones: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+};
+
+/**
+ * GET /api/messages/conversation/:conversationId
+ * Returns { conversation, messages } — messages ordered by createdAt ASC.
+ */
+export const fetchConversationMessages = async (
+  conversationId: string
+): Promise<{ conversation: Conversation; messages: Message[] }> => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/messages/conversation/${encodeURIComponent(conversationId)}`,
     { headers: getAuthHeaders() }
   );
 
@@ -53,15 +88,29 @@ export const fetchMessages = async (userId: string): Promise<Message[]> => {
     throw new Error(`Error al cargar mensajes: ${response.status}`);
   }
 
-  const data = await response.json();
-  return Array.isArray(data) ? data : data.messages ?? [];
+  return response.json();
 };
 
-export const sendMessage = async (message: Omit<Message, "id">): Promise<Message> => {
-  const response = await fetch(`${API_BASE_URL}/api/messages`, {
+/**
+ * POST /api/messages/create
+ * Sends a message to an existing conversation, or creates a new conversation
+ * (when conversationId is omitted) and sends the first message.
+ * Returns { conversation, message }.
+ */
+export const sendMessage = async (params: {
+  conversationId?: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  // Required when creating a new conversation
+  participantIds?: string[];
+  productId?: string;
+  orderId?: string;
+}): Promise<{ conversation: Conversation; message: Message }> => {
+  const response = await fetch(`${API_BASE_URL}/api/messages/create`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: JSON.stringify(message),
+    body: JSON.stringify(params),
   });
 
   if (!response.ok) {
@@ -71,20 +120,33 @@ export const sendMessage = async (message: Omit<Message, "id">): Promise<Message
   return response.json();
 };
 
-export const deleteMessage = async (messageId: string): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/api/messages/${encodeURIComponent(messageId)}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(),
-  });
+/**
+ * PUT /api/messages/:id/read
+ * Marks a single message as read. Returns the updated Message object.
+ */
+export const markAsRead = async (messageId: string): Promise<Message> => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/messages/${encodeURIComponent(messageId)}/read`,
+    {
+      method: "PUT",
+      headers: getAuthHeaders(),
+    }
+  );
 
   if (!response.ok) {
-    throw new Error(`Error al eliminar mensaje: ${response.status}`);
+    throw new Error(`Error al marcar mensaje como leído: ${response.status}`);
   }
+
+  return response.json();
 };
 
-export const deleteConversation = async (conversationKey: string): Promise<void> => {
+/**
+ * DELETE /api/messages/:id
+ * Deletes a message. Returns { msg: "Message deleted" }.
+ */
+export const deleteMessage = async (messageId: string): Promise<void> => {
   const response = await fetch(
-    `${API_BASE_URL}/api/conversations/${encodeURIComponent(conversationKey)}`,
+    `${API_BASE_URL}/api/messages/${encodeURIComponent(messageId)}`,
     {
       method: "DELETE",
       headers: getAuthHeaders(),
@@ -92,20 +154,6 @@ export const deleteConversation = async (conversationKey: string): Promise<void>
   );
 
   if (!response.ok) {
-    throw new Error(`Error al eliminar conversación: ${response.status}`);
-  }
-};
-
-export const markAsRead = async (messageId: string): Promise<void> => {
-  const response = await fetch(
-    `${API_BASE_URL}/api/messages/${encodeURIComponent(messageId)}/read`,
-    {
-      method: "PATCH",
-      headers: getAuthHeaders(),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Error al marcar mensaje como leído: ${response.status}`);
+    throw new Error(`Error al eliminar mensaje: ${response.status}`);
   }
 };
