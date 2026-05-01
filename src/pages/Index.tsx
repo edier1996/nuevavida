@@ -88,13 +88,27 @@ const Index = () => {
   const hasActiveFilters = searchQuery || locationFilter || selectedCategory;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent">
       <Header />
       <HeroSection />
 
       {/* Products Section */}
       <section className="container mx-auto px-4 py-12">
-        <div className="mb-6 flex flex-col gap-4">
+        <div className="mb-6 rounded-[2rem] border border-white/70 surface-panel p-5 card-shadow md:p-7">
+          <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary/75">Objetos disponibles</p>
+              <h2 className="mt-2 text-3xl text-foreground md:text-4xl">Encuentra donaciones activas cerca de ti</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Filtra por ciudad, categoria o fecha para encontrar objetos que todavia estan disponibles y listos para asignarse.
+              </p>
+            </div>
+            <div className="rounded-full border border-border/80 bg-white/80 px-4 py-2 text-sm font-medium text-muted-foreground">
+              {filtered.length} resultado{filtered.length !== 1 ? 's' : ''} disponible{filtered.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          <div className="mb-6 flex flex-col gap-4">
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -103,7 +117,7 @@ const Index = () => {
               placeholder="Buscar productos, categorías..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4"
+              className="rounded-full border-border/80 bg-white/80 pl-10 pr-4"
             />
           </div>
 
@@ -112,7 +126,7 @@ const Index = () => {
             <div className="flex items-center gap-4">
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="sm" className="gap-2 rounded-full border-border/80 bg-white/80">
                     <SlidersHorizontal className="h-4 w-4" />
                     Filtros
                     {hasActiveFilters && (
@@ -166,25 +180,25 @@ const Index = () => {
               </Sheet>
             </div>
 
-            <div className="text-sm text-muted-foreground">
-              {filtered.length} resultado{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
+            <div className="text-sm text-muted-foreground">Ordena y afina la busqueda segun tu ciudad y necesidad.</div>
+          </div>
+          </div>
+
+          <CategoryFilter selected={selectedCategory} onSelect={setSelectedCategory} />
+
+          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {filtered.map((product, i) => (
+              <ProductCard key={product.id} product={product} index={i} />
+            ))}
+          </div>
+
+          {filtered.length === 0 && (
+            <div className="py-20 text-center">
+              <p className="text-2xl text-foreground">No encontramos objetos con esos filtros.</p>
+              <p className="mt-2 text-muted-foreground">Prueba otra ciudad, elimina una categoria o reinicia la busqueda.</p>
             </div>
-          </div>
+          )}
         </div>
-
-        <CategoryFilter selected={selectedCategory} onSelect={setSelectedCategory} />
-
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {filtered.map((product, i) => (
-            <ProductCard key={product.id} product={product} index={i} />
-          ))}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="py-20 text-center">
-            <p className="text-lg text-muted-foreground">No se encontraron objetos con esos filtros.</p>
-          </div>
-        )}
       </section>
 
       <Footer />

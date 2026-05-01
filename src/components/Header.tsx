@@ -40,41 +40,45 @@ const Header = () => {
   }, [isAuthenticated, user]);
 
   return (
-    <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl nav-shadow">
-      <div className="container mx-auto flex items-center justify-between px-4 py-3">
+    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/75 backdrop-blur-xl nav-shadow">
+      <div className="container mx-auto flex items-center justify-between gap-3 px-4 py-3">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
-          <img src={logo} alt="Nueva Vida" className="h-16 w-16 rounded-lg" />
+        <Link to="/" className="flex items-center gap-3 rounded-2xl border border-border/70 bg-white/80 px-2.5 py-2 transition-transform duration-200 hover:-translate-y-0.5">
+          <img src={logo} alt="Nueva Vida" className="h-12 w-12 rounded-2xl object-cover" />
+          <div className="hidden sm:block">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/75">Fundacion 1327</p>
+            <p className="text-base font-bold text-foreground">Nueva Vida</p>
+          </div>
         </Link>
 
         {/* Desktop Search */}
-        <div className="hidden max-w-md flex-1 px-8 md:block">
+        <div className="hidden max-w-xl flex-1 px-4 lg:block">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={2.5} />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={2.5} />
             <input
               type="text"
-              placeholder="Buscar productos..."
-              className="w-full rounded-lg bg-secondary py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="Busca muebles, ropa, tecnologia o ayudas disponibles"
+              className="w-full rounded-full border border-border/80 bg-white/80 py-3 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
         </div>
 
         {/* Desktop Nav */}
-        <nav className="hidden items-center gap-2 md:flex">
+        <nav className="hidden items-center gap-1 md:flex">
           <Link to="/explorar">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:bg-white/70 hover:text-foreground">
               Explorar
             </Button>
           </Link>
           {isAuthenticated && (
             <>
               <Link to="/favoritos">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:bg-white/70 hover:text-foreground">
                   <Heart className="h-5 w-5" strokeWidth={2.5} />
                 </Button>
               </Link>
               <Link to="/mensajes">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative">
+                <Button variant="ghost" size="icon" className="relative rounded-full text-muted-foreground hover:bg-white/70 hover:text-foreground">
                   <MessageCircle className="h-5 w-5" strokeWidth={2.5} />
                   {unreadMessages > 0 && (
                     <Badge
@@ -92,48 +96,48 @@ const Header = () => {
           {isAuthenticated ? (
             <div className="flex items-center gap-2">
               <Link to="/dashboard">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:bg-white/70 hover:text-foreground">
                   Dashboard
                 </Button>
               </Link>
               <Link to="/mis-solicitudes">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:bg-white/70 hover:text-foreground">
                   Mis solicitudes
                 </Button>
               </Link>
               {user?.role === 'admin' && (
                 <Link to="/admin">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:bg-white/70 hover:text-foreground">
                     Admin
                   </Button>
                 </Link>
               )}
               {user?.role === 'worker' && (
                 <Link to="/worker">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:bg-white/70 hover:text-foreground">
                     Soporte
                   </Button>
                 </Link>
               )}
               <Link to="/perfil">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:bg-white/70 hover:text-foreground">
                   {user?.name}
                 </Button>
               </Link>
-              <Button variant="ghost" size="icon" onClick={logout} className="text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" onClick={logout} className="rounded-full text-muted-foreground hover:bg-white/70 hover:text-foreground">
                 <LogOut className="h-5 w-5" strokeWidth={2.5} />
               </Button>
             </div>
           ) : (
             <Link to="/login">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="rounded-full border-border/80 bg-white/80">
                 Iniciar sesión
               </Button>
             </Link>
           )}
           {isAuthenticated && (
             <Link to="/publicar">
-              <Button size="sm" className="ml-2 gap-1.5">
+              <Button size="sm" className="ml-2 gap-1.5 rounded-full bg-accent text-accent-foreground shadow-lg shadow-accent/20 hover:bg-accent/90">
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
                 Publicar
               </Button>
@@ -157,7 +161,7 @@ const Header = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden bg-card md:hidden"
+            className="overflow-hidden border-t border-border/70 bg-background/90 md:hidden"
           >
             <div className="container mx-auto space-y-3 px-4 pb-4">
               <div className="relative">
@@ -165,36 +169,36 @@ const Header = () => {
                 <input
                   type="text"
                   placeholder="Buscar productos..."
-                  className="w-full rounded-lg bg-secondary py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full rounded-full border border-border/80 bg-white/80 py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <Link to="/explorar" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Explorar</Link>
+                <Link to="/explorar" className="rounded-2xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-white/80 hover:text-foreground">Explorar</Link>
                 {isAuthenticated && (
                   <>
-                    <Link to="/favoritos" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Favoritos</Link>
-                    <Link to="/mensajes" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Mensajes</Link>
-                    <Link to="/dashboard" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Dashboard</Link>
-                    <Link to="/mis-solicitudes" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Mis solicitudes</Link>
-                    <Link to="/perfil" className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">Mi Perfil</Link>
+                    <Link to="/favoritos" className="rounded-2xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-white/80 hover:text-foreground">Favoritos</Link>
+                    <Link to="/mensajes" className="rounded-2xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-white/80 hover:text-foreground">Mensajes</Link>
+                    <Link to="/dashboard" className="rounded-2xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-white/80 hover:text-foreground">Dashboard</Link>
+                    <Link to="/mis-solicitudes" className="rounded-2xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-white/80 hover:text-foreground">Mis solicitudes</Link>
+                    <Link to="/perfil" className="rounded-2xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-white/80 hover:text-foreground">Mi Perfil</Link>
                   </>
                 )}
               </div>
               {isAuthenticated ? (
                 <>
                   <Link to="/publicar">
-                    <Button className="w-full gap-1.5">
+                    <Button className="w-full gap-1.5 rounded-full bg-accent text-accent-foreground hover:bg-accent/90">
                       <Plus className="h-4 w-4" strokeWidth={2.5} />
                       Publicar objeto
                     </Button>
                   </Link>
-                  <Button variant="outline" className="w-full" onClick={logout}>
+                  <Button variant="outline" className="w-full rounded-full border-border/80 bg-white/80" onClick={logout}>
                     Cerrar sesión
                   </Button>
                 </>
               ) : (
                 <Link to="/login">
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full rounded-full border-border/80 bg-white/80">
                     Iniciar sesión
                   </Button>
                 </Link>

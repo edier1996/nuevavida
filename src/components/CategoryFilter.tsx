@@ -29,10 +29,10 @@ const CategoryFilter = ({ selected, onSelect }: CategoryFilterProps) => {
     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
       <button
         onClick={() => onSelect(null)}
-        className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+        className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
           selected === null
-            ? "bg-primary text-primary-foreground card-shadow"
-            : "bg-card text-muted-foreground card-shadow hover:text-foreground"
+            ? "border-primary bg-primary text-primary-foreground card-shadow"
+            : "border-border/80 bg-white/80 text-muted-foreground card-shadow hover:-translate-y-0.5 hover:text-foreground"
         }`}
       >
         Todos
@@ -41,10 +41,10 @@ const CategoryFilter = ({ selected, onSelect }: CategoryFilterProps) => {
         <button
           key={cat.value}
           onClick={() => onSelect(cat.value === selected ? null : cat.value)}
-          className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+          className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
             selected === cat.value
-              ? "bg-primary text-primary-foreground card-shadow"
-              : "bg-card text-muted-foreground card-shadow hover:text-foreground"
+              ? "border-primary bg-primary text-primary-foreground card-shadow"
+              : "border-border/80 bg-white/80 text-muted-foreground card-shadow hover:-translate-y-0.5 hover:text-foreground"
           }`}
         >
           {iconMap[cat.icon]}
