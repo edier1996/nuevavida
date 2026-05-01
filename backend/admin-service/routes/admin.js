@@ -1,5 +1,5 @@
 const express = require("express")
-const { Report } = require("../db")
+const { Report, ProductRequest } = require("../db")
 const adminAuth = require("../middleware/adminAuth")
 
 const router = express.Router()
@@ -110,5 +110,115 @@ router.post("/users/:id/ban", adminAuth, async (req, res) => {
     res.status(500).json({ error: err?.original?.sqlMessage || err?.message || "Server error" })
   }
 })
+
+// ─── PRODUCT REQUESTS ────────────────────────────────────────────────────────
+
+// POST /api/admin/requests — Create a product request
+router.post("/requests", async (req, res) => {
+  const {
+    productId,
+    productTitle,
+    productCity,
+    requesterId,
+    requesterName,
+    requesterEmail,
+    requesterPhone,
+    requesterCity,
+    householdSize,
+    needLevel,
+    reason,
+    intendedUse,
+    pickupWindow,
+    extraNotes,
+    evidence,
+    score,
+    scoreBreakdown,
+  } = req.body;
+
+  try {
+    if (!productId || !productTitle || !requesterId || !requesterName || !requesterEmail || !needLevel || !reason || !pickupWindow) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const request = await ProductRequest.create({
+      productId,
+      productTitle,
+      productCity,
+      requesterId,
+      requesterName,
+      requesterEmail,
+      requesterPhone,
+      requesterCity,
+      householdSize,
+      needLevel,
+      reason,
+      intendedUse,
+      pickupWindow,
+      extraNotes,
+      evidence,
+      status: 'pending',
+      score: score || 0,
+      scoreBreakdown: scoreBreakdown || {},
+    });
+
+    res.status(201).json(request);
+  } catch (err) {
+    console.error("Error creating request:", err);
+    res.status(500).json({ error: err?.original?.sqlMessage || err?.message || "Server error" });
+  }
+});
+
+// GET /api/admin/requests — Get all product requests
+router.get("/requests", async (req, res) => {
+  try {
+    const requests = await ProductRequest.findAll({
+      order: [['createdAt', 'DESC']],
+    });
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// GET /api/admin/requests/:id — Get a specific request
+router.get("/requests/:id", async (req, res) => {
+  try {
+    const request = await ProductRequest.findByPk(req.params.id);
+    if (!request) return res.status(404).json({ msg: "Request not found" });
+    res.json(request);
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// PUT /api/admin/requests/:id — Update request status
+router.put("/requests/:id", async (req, res) => {
+  const { status } = req.body;
+
+  try {
+    const [updatedRowsCount] = await ProductRequest.update(
+      { status },
+      { where: { id: req.params.id } }
+    );
+    if (updatedRowsCount === 0) return res.status(404).json({ msg: "Request not found" });
+    const updated = await ProductRequest.findByPk(req.params.id);
+    res.json(updated);
+  } catch (err) {
+    console.error("Error updating request:", err);
+    res.status(500).json({ error: err?.original?.sqlMessage || err?.message || "Server error" });
+  }
+});
+
+// DELETE /api/admin/requests/:id — Delete a request
+router.delete("/requests/:id", async (req, res) => {
+  try {
+    const request = await ProductRequest.findByPk(req.params.id);
+    if (!request) return res.status(404).json({ msg: "Request not found" });
+    await request.destroy();
+    res.json({ msg: "Request deleted" });
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 module.exports = router
