@@ -32,7 +32,15 @@ export interface ProductRequest {
 }
 
 const resolveApiBaseUrl = () => {
+  const runtimeUrl =
+    typeof window !== "undefined" &&
+    typeof (window as Window & { __API_CONFIG__?: Record<string, string> }).__API_CONFIG__?.VITE_ORDERS_API_BASE_URL === "string" &&
+    (window as Window & { __API_CONFIG__?: Record<string, string> }).__API_CONFIG__!.VITE_ORDERS_API_BASE_URL !== "__VITE_ORDERS_API_BASE_URL__"
+      ? (window as Window & { __API_CONFIG__?: Record<string, string> }).__API_CONFIG__!.VITE_ORDERS_API_BASE_URL
+      : "";
+
   const raw =
+    runtimeUrl ||
     import.meta.env.VITE_ORDERS_API_BASE_URL ||
     import.meta.env.VITE_ADMIN_API_BASE_URL ||
     import.meta.env.VITE_API_BASE_URL ||
