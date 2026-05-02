@@ -14,6 +14,6 @@ builder = "nixpacks"
 #   start_command = "npm run preview"
 
 [deploy]
-startCommand = "npx serve -s dist --listen tcp://$HOST:$PORT"
+startCommand = "npx serve -s dist -l $PORT --host 0.0.0.0"
 
 # Para backend services, Railway detectará automáticamente Express.js
