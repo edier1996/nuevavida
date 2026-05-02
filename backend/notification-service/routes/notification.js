@@ -4,6 +4,14 @@ const sendEmail = require("../services/emailService")
 
 const router = express.Router()
 
+// Handle CORS preflight requests
+router.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
 // POST /api/notifications/send — Create and optionally email a notification
 router.post("/send", async (req, res) => {
   const { userId, type, title, message, relatedId, sendEmail: shouldEmail, email } = req.body
