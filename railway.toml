@@ -1,19 +1,5 @@
-# Railway Configuration File
-# https://docs.railway.app/reference/nixpacks
-
-# Detecta automáticamente el tipo de proyecto y cómo hacer build
-
 [build]
-# Instalar dependencias
 builder = "nixpacks"
 
-# Si la detección automática falla, especificar:
-# - Para frontend Vite: 
-#   builder = "vite"
-#   build_command = "npm run build"
-#   start_command = "npm run preview"
-
 [deploy]
-startCommand = "npx serve -s dist -l $PORT"
-
-# Para backend services, Railway detectará automáticamente Express.js
+startCommand = "node index.js"
