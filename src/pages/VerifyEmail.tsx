@@ -84,10 +84,7 @@ const VerifyEmail = () => {
     };
 
     try {
-      const sameOriginBase =
-        typeof window !== "undefined" ? window.location.origin : "";
-
-      const rawTargets = [USERS_API_BASE_URL, sameOriginBase].filter(Boolean);
+      const rawTargets = [USERS_API_BASE_URL].filter(Boolean);
       const targets = Array.from(
         new Set(
           rawTargets.map((base) => String(base).trim().replace(/\/+$/, ""))
