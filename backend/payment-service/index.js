@@ -35,6 +35,9 @@ app.use(express.json())
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
 
+// routes
+app.use("/api/payments", paymentRoutes)
+
 // Test connection and sync
 sequelize.authenticate()
   .then(() => {
@@ -50,6 +53,3 @@ sequelize.authenticate()
   .catch((err) => {
     console.error("🚫 Failed to connect to MySQL -> Payment Service", err)
   })
-
-// routes
-app.use("/api/payments", paymentRoutes)
