@@ -21,11 +21,27 @@ const transporter = nodemailer.createTransport({
   host: smtpHost,
   port: smtpPort,
   secure: smtpSecure, // true for 465, false for other ports
+  connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10000),
+  greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
+  socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 10000),
   auth: {
     user: smtpUser,
     pass: smtpPassword,
   },
 });
+
+const withTimeout = (promise, ms, label) => {
+  let timer = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+};
 
 const sanitizeErrorMessage = (message) => {
   if (!message) return 'Unknown SMTP error';
@@ -72,7 +88,8 @@ const sendPasswordResetEmail = async (email, resetToken, resetLink) => {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 12000);
+  return withTimeout(transporter.sendMail(mailOptions), timeoutMs, 'Password reset email send');
 };
 
 const sendVerificationEmail = async (email, verificationCode) => {
@@ -89,7 +106,8 @@ const sendVerificationEmail = async (email, verificationCode) => {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 12000);
+  return withTimeout(transporter.sendMail(mailOptions), timeoutMs, 'Verification email send');
 };
 
 module.exports = {
