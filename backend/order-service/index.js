@@ -32,8 +32,12 @@ const corsOptions = {
 }
 
 app.use(express.json())
+// CORS middleware — must be registered before routes
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
+
+// Routes — registered before DB connection so they are always available
+app.use("/api/orders", orderRoutes)
 
 // Test connection and sync
 sequelize.authenticate()
@@ -50,6 +54,3 @@ sequelize.authenticate()
   .catch((err) => {
     console.error("🚫 Failed to connect to MySQL -> Order Service", err)
   })
-
-// routes
-app.use("/api/orders", orderRoutes)
