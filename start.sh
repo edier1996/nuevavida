@@ -12,4 +12,4 @@ if [ -f "$CONFIG_FILE" ]; then
   cat "$CONFIG_FILE"
 fi
 
-exec npx serve -s dist -l ${PORT:-8080} --host 0.0.0.0
+exec npx serve -s dist -l ${PORT:-8080}
