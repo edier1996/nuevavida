@@ -75,9 +75,10 @@ const VerifyEmail = () => {
   const handleResend = async () => {
     setIsResending(true);
     let timer: ReturnType<typeof setTimeout> | null = null;
-    try {
+
+    const resendOnce = async (timeoutMs: number) => {
       const controller = new AbortController();
-      timer = setTimeout(() => controller.abort(), 15000);
+      timer = setTimeout(() => controller.abort(), timeoutMs);
 
       const response = await fetch(
         `${USERS_API_BASE_URL}/api/users/resend-verification-code`,
@@ -90,8 +91,42 @@ const VerifyEmail = () => {
       );
 
       clearTimeout(timer);
+      timer = null;
 
       const data = await response.json().catch(() => ({}));
+      return { response, data };
+    };
+
+    const getFriendlyError = (error: unknown) => {
+      if (!(error instanceof Error)) {
+        return "No se pudo reenviar el código";
+      }
+
+      const msg = error.message.toLowerCase();
+      if (
+        msg.includes("aborted") ||
+        msg.includes("aborterror") ||
+        msg.includes("signal is aborted")
+      ) {
+        return "El servidor tardó demasiado en responder. Intenta de nuevo en unos segundos.";
+      }
+
+      if (msg.includes("failed to fetch") || msg.includes("network")) {
+        return "No hay conexión con el servicio de usuarios en este momento.";
+      }
+
+      return error.message;
+    };
+
+    try {
+      let payload = await resendOnce(15000);
+
+      // Retry once when the first attempt times out/network-fails.
+      if (!payload.response.ok && payload.response.status >= 500) {
+        payload = await resendOnce(25000);
+      }
+
+      const { response, data } = payload;
 
       if (!response.ok) {
         throw new Error(
@@ -118,7 +153,7 @@ const VerifyEmail = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "No se pudo reenviar el código",
+        description: getFriendlyError(error),
         variant: "destructive",
       });
     } finally {
