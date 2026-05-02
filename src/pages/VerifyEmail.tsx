@@ -107,7 +107,18 @@ const VerifyEmail = () => {
             }
           );
 
-          const data = await response.json().catch(() => ({}));
+          const contentType = response.headers.get("content-type") || "";
+          const isJson = contentType.toLowerCase().includes("application/json");
+          if (!isJson) {
+            lastError = "La respuesta del servidor no es valida. Revisa la URL del servicio de usuarios.";
+            continue;
+          }
+
+          const data = await response.json().catch(() => null);
+          if (!data || typeof data !== "object") {
+            lastError = "Respuesta invalida del servicio de usuarios.";
+            continue;
+          }
 
           if (!response.ok) {
             lastError =
@@ -117,7 +128,8 @@ const VerifyEmail = () => {
             continue;
           }
 
-          if (data?.emailSent === false) {
+          // Consider success only when backend confirms emailSent = true.
+          if (data?.emailSent !== true) {
             lastError =
               (typeof data?.emailError === "string" && data.emailError) ||
               (typeof data?.msg === "string" && data.msg) ||
