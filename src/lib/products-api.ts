@@ -28,6 +28,42 @@ const resolveApiBaseUrl = () => {
 
 const API_BASE_URL = resolveApiBaseUrl();
 
+const buildApiUrl = (path: string, baseUrl: string) => {
+  if (!baseUrl) return path;
+  return `${baseUrl}${path}`;
+};
+
+const fetchProductsApi = async (path: string, init?: RequestInit) => {
+  const primaryUrl = buildApiUrl(path, API_BASE_URL);
+
+  try {
+    const primaryResponse = await fetch(primaryUrl, init);
+
+    // If the configured base URL points to the frontend service, Railway can
+    // reply 404 without CORS headers. Retry against same-origin /api.
+    if (
+      typeof window !== "undefined" &&
+      API_BASE_URL &&
+      !primaryUrl.startsWith(window.location.origin) &&
+      primaryResponse.status === 404
+    ) {
+      return fetch(buildApiUrl(path, window.location.origin), init);
+    }
+
+    return primaryResponse;
+  } catch {
+    if (
+      typeof window !== "undefined" &&
+      API_BASE_URL &&
+      !primaryUrl.startsWith(window.location.origin)
+    ) {
+      return fetch(buildApiUrl(path, window.location.origin), init);
+    }
+
+    throw new Error("No se pudo conectar con la API de productos");
+  }
+};
+
 type ApiProduct = {
   id: number | string;
   title?: string;
@@ -81,7 +117,7 @@ const toProduct = (item: ApiProduct): Product => {
 };
 
 export const fetchProducts = async (): Promise<Product[]> => {
-  const response = await fetch(`${API_BASE_URL}/api/products`);
+  const response = await fetchProductsApi(`/api/products`);
   if (!response.ok) {
     throw new Error("No se pudieron cargar los productos");
   }
@@ -90,7 +126,7 @@ export const fetchProducts = async (): Promise<Product[]> => {
 };
 
 export const createProduct = async (payload: Product): Promise<Product> => {
-  const response = await fetch(`${API_BASE_URL}/api/products/create`, {
+  const response = await fetchProductsApi(`/api/products/create`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -123,7 +159,7 @@ export const updateProduct = async (
   productId: string,
   updates: Partial<Product>
 ): Promise<Product> => {
-  const response = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
+  const response = await fetchProductsApi(`/api/products/${productId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -140,7 +176,7 @@ export const updateProduct = async (
 };
 
 export const deleteProductById = async (productId: string): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
+  const response = await fetchProductsApi(`/api/products/${productId}`, {
     method: "DELETE",
   });
 
