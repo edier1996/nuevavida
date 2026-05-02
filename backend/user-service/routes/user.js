@@ -2,7 +2,12 @@ const express = require("express")
 const { User, TempRegistration } = require("../db")
 const argon2 = require("argon2")
 const jwt = require("jsonwebtoken")
-const { sendPasswordResetEmail, sendVerificationEmail } = require("../config/email")
+const {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+  getSmtpConfigStatus,
+  verifySmtpConnection,
+} = require("../config/email")
 
 const router = express.Router()
 
@@ -66,12 +71,21 @@ router.post("/register", async (req, res) => {
 
     // Try to send verification email, but don't fail if it doesn't work
     let emailSent = false;
+    let emailError = null;
     try {
       await sendVerificationEmail(email, verificationCode);
       emailSent = true;
       console.log(`✅ Verification email sent to ${email}`);
-    } catch (emailError) {
-      console.error(`❌ Failed to send verification email to ${email}:`, emailError.message);
+    } catch (mailError) {
+      const smtpProbe = await verifySmtpConnection();
+      emailError = mailError?.message || "SMTP delivery failed";
+      console.error(`❌ Failed to send verification email to ${email}:`, emailError);
+      console.error("SMTP status:", {
+        ...getSmtpConfigStatus(),
+        probeOk: smtpProbe.ok,
+        probeCode: smtpProbe.code,
+        probeError: smtpProbe.error,
+      });
       // Don't throw - we still want to return success
     }
 
@@ -82,6 +96,7 @@ router.post("/register", async (req, res) => {
       email: email,
       tempRegistrationId: tempReg.id,
       emailSent: emailSent,
+      emailError: emailSent ? null : emailError,
     });
   } catch (error) {
     console.error("Error in register:", error);
@@ -241,12 +256,21 @@ router.post("/resend-verification-code", async (req, res) => {
 
     // Try to send verification email
     let emailSent = false;
+    let emailError = null;
     try {
       await sendVerificationEmail(email, verificationCode);
       emailSent = true;
       console.log(`✅ Verification email resent to ${email}`);
-    } catch (emailError) {
-      console.error(`❌ Failed to resend verification email to ${email}:`, emailError.message);
+    } catch (mailError) {
+      const smtpProbe = await verifySmtpConnection();
+      emailError = mailError?.message || "SMTP delivery failed";
+      console.error(`❌ Failed to resend verification email to ${email}:`, emailError);
+      console.error("SMTP status:", {
+        ...getSmtpConfigStatus(),
+        probeOk: smtpProbe.ok,
+        probeCode: smtpProbe.code,
+        probeError: smtpProbe.error,
+      });
       // Don't throw - we still want to return success
     }
 
@@ -255,6 +279,7 @@ router.post("/resend-verification-code", async (req, res) => {
         ? "Verification code sent to your email"
         : "Code generated but email delivery failed. Check your spam folder or try again.",
       emailSent: emailSent,
+      emailError: emailSent ? null : emailError,
     });
   } catch (error) {
     console.error("Error in resend-verification-code:", error);

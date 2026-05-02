@@ -27,6 +27,33 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const sanitizeErrorMessage = (message) => {
+  if (!message) return 'Unknown SMTP error';
+  return String(message).replace(/(password|pass|token|secret)=?[^\s]*/gi, '$1=***');
+};
+
+const getSmtpConfigStatus = () => ({
+  host: smtpHost,
+  port: smtpPort,
+  secure: smtpSecure,
+  hasUser: Boolean(smtpUser),
+  hasPassword: Boolean(smtpPassword),
+  from: smtpFrom,
+});
+
+const verifySmtpConnection = async () => {
+  try {
+    await transporter.verify();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: sanitizeErrorMessage(error?.message),
+      code: error?.code || null,
+    };
+  }
+};
+
 const sendPasswordResetEmail = async (email, resetToken, resetLink) => {
   const mailOptions = {
     from: smtpFrom,
@@ -65,4 +92,9 @@ const sendVerificationEmail = async (email, verificationCode) => {
   return transporter.sendMail(mailOptions);
 };
 
-module.exports = { sendPasswordResetEmail, sendVerificationEmail };
+module.exports = {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+  getSmtpConfigStatus,
+  verifySmtpConnection,
+};

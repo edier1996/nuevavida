@@ -74,23 +74,46 @@ const VerifyEmail = () => {
 
   const handleResend = async () => {
     setIsResending(true);
+    let timer: ReturnType<typeof setTimeout> | null = null;
     try {
+      const controller = new AbortController();
+      timer = setTimeout(() => controller.abort(), 15000);
+
       const response = await fetch(
         `${USERS_API_BASE_URL}/api/users/resend-verification-code`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email }),
+          signal: controller.signal,
         }
       );
 
+      clearTimeout(timer);
+
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error("Error al reenviar el código");
+        throw new Error(
+          typeof data?.error === "string" && data.error
+            ? data.error
+            : "Error al reenviar el código"
+        );
+      }
+
+      if (data?.emailSent === false) {
+        throw new Error(
+          (typeof data?.emailError === "string" && data.emailError) ||
+            (typeof data?.msg === "string" && data.msg) ||
+            "No se pudo enviar el correo de verificación"
+        );
       }
 
       toast({
         title: "Éxito",
-        description: "Código de verificación reenviado a tu email",
+        description:
+          (typeof data?.msg === "string" && data.msg) ||
+          "Código de verificación reenviado a tu email",
       });
     } catch (error) {
       toast({
@@ -99,6 +122,9 @@ const VerifyEmail = () => {
         variant: "destructive",
       });
     } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
       setIsResending(false);
     }
   };
