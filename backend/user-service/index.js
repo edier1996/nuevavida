@@ -33,10 +33,10 @@ const corsOptions = {
   credentials: false,
 }
 
-// middleware
+// middleware - CORS MUST be first
 app.use(express.json())
 app.use(cors(corsOptions))
-app.options('*', cors(corsOptions)) // Handle preflight requests
+app.options('*', cors(corsOptions)) // Handle preflight requests BEFORE routes
 
 // CORS debugging middleware
 app.use((req, res, next) => {
@@ -47,7 +47,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// routes
+// routes - AFTER middleware
 app.use("/api/users", userRoutes)
 
 // Seed the default admin user if it doesn't already exist
