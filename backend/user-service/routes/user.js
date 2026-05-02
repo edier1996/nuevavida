@@ -6,6 +6,14 @@ const { sendPasswordResetEmail, sendVerificationEmail } = require("../config/ema
 
 const router = express.Router()
 
+// Handle CORS preflight requests
+router.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
 // Middleware for JWT authentication
 const auth = (req, res, next) => {
   const token = req.header("Authorization")?.replace("Bearer ", "")
