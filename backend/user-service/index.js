@@ -29,14 +29,15 @@ const corsOptions = {
     return callback(new Error(`CORS blocked for origin: ${origin}`), false)
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
   credentials: false,
+  optionsSuccessStatus: 204,
 }
 
 // middleware - CORS MUST be first
-app.use(express.json())
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions)) // Handle preflight requests BEFORE routes
+app.use(express.json())
 
 // CORS debugging middleware
 app.use((req, res, next) => {
