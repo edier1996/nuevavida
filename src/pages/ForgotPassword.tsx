@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
+import { resolveUserApiBaseUrl } from "@/lib/user-api";
+
+const USERS_API_BASE_URL = resolveUserApiBaseUrl();
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -26,7 +29,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_USERS_API_BASE_URL}/api/users/forgot-password`,
+        `${USERS_API_BASE_URL}/api/users/forgot-password`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -1,4 +1,4 @@
-const resolveUserApiBaseUrl = () => {
+export const resolveUserApiBaseUrl = () => {
   const runtimeUrl =
     typeof window !== "undefined" &&
     typeof (window as Window & { __API_CONFIG__?: Record<string, string> }).__API_CONFIG__?.VITE_USERS_API_BASE_URL === "string" &&

@@ -3,20 +3,33 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+const smtpHost = process.env.SMTP_HOST || process.env.NODEMAILER_HOST || 'smtp.gmail.com';
+const smtpPort = Number(process.env.SMTP_PORT || process.env.NODEMAILER_PORT || 587);
+const smtpSecure =
+  process.env.SMTP_SECURE === 'true' ||
+  process.env.NODEMAILER_SECURE === 'true' ||
+  smtpPort === 465;
+const smtpUser = process.env.SMTP_USER || process.env.NODEMAILER_EMAIL;
+const smtpPassword = process.env.SMTP_PASSWORD || process.env.NODEMAILER_PASSWORD;
+const smtpFrom =
+  process.env.SMTP_FROM ||
+  process.env.SENDER_EMAIL ||
+  smtpUser;
+
 // Support both Gmail and generic SMTP
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: process.env.SMTP_PORT || 587,
-  secure: process.env.SMTP_SECURE === 'true' || false, // true for 465, false for other ports
+  host: smtpHost,
+  port: smtpPort,
+  secure: smtpSecure, // true for 465, false for other ports
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
+    user: smtpUser,
+    pass: smtpPassword,
   },
 });
 
 const sendPasswordResetEmail = async (email, resetToken, resetLink) => {
   const mailOptions = {
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    from: smtpFrom,
     to: email,
     subject: 'Recuperar contraseña - Nueva Vida',
     html: `
@@ -37,7 +50,7 @@ const sendPasswordResetEmail = async (email, resetToken, resetLink) => {
 
 const sendVerificationEmail = async (email, verificationCode) => {
   const mailOptions = {
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    from: smtpFrom,
     to: email,
     subject: 'Verifica tu email - Nueva Vida',
     html: `

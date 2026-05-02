@@ -44,6 +44,23 @@ const Login = () => {
       });
       navigate("/verify-email", { state: { email: result.email, emailSent: result.emailSent } });
     } else {
+      const errorText = (result.error || "").toLowerCase();
+      const isNetworkOrCorsIssue =
+        errorText.includes("failed to fetch") ||
+        errorText.includes("network") ||
+        errorText.includes("cors") ||
+        errorText.includes("load failed");
+
+      if (isNetworkOrCorsIssue) {
+        toast({
+          title: "Continuar verificación",
+          description:
+            "Hubo un problema de red al confirmar el registro. Si tu solicitud sí se guardó, puedes verificar tu cuenta con el código.",
+        });
+        navigate("/verify-email", { state: { email, emailSent: false } });
+        return;
+      }
+
       setError(result.error || "No se pudo crear la cuenta.");
     }
   };

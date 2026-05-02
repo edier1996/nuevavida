@@ -6,6 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { resolveUserApiBaseUrl } from "@/lib/user-api";
+
+const USERS_API_BASE_URL = resolveUserApiBaseUrl();
 
 const VerifyEmail = () => {
   const [verificationCode, setVerificationCode] = useState("");
@@ -73,7 +76,7 @@ const VerifyEmail = () => {
     setIsResending(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_USERS_API_BASE_URL}/api/users/resend-verification-code`,
+        `${USERS_API_BASE_URL}/api/users/resend-verification-code`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

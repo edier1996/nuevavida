@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { createUserInDatabase } from "@/lib/user-api";
+import { createUserInDatabase, resolveUserApiBaseUrl } from "@/lib/user-api";
 
 interface User {
   id: string;
@@ -17,33 +17,7 @@ interface StoredUser extends User {
   passwordStrength?: "weak" | "strong";
 }
 
-const resolveApiBaseUrl = () => {
-  const raw =
-    import.meta.env.VITE_USERS_API_BASE_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    import.meta.env.VITE_API_URL ||
-    import.meta.env.PUBLIC_API_URL ||
-    "";
-
-  const trimmed = raw.trim().replace(/\/+$/, "");
-  let normalized = trimmed.endsWith("/api") ? trimmed.slice(0, -4) : trimmed;
-
-  if (normalized && !/^https?:\/\//i.test(normalized)) {
-    normalized = `https://${normalized}`;
-  }
-
-  if (
-    typeof window !== "undefined" &&
-    window.location.protocol === "https:" &&
-    normalized.startsWith("http://")
-  ) {
-    return normalized.replace("http://", "https://");
-  }
-
-  return normalized;
-};
-
-const API_BASE_URL = resolveApiBaseUrl();
+const API_BASE_URL = resolveUserApiBaseUrl();
 
 interface AuthContextType {
   user: User | null;
@@ -302,7 +276,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       // Save token and user info
       if (data.token) {
-        localStorage.setItem("token", data.token);
+        localStorage.setItem("auth_token", data.token);
 
         const user: User = {
           id: data.user.id,
