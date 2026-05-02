@@ -36,9 +36,13 @@ const corsOptions = {
   credentials: false,
 }
 
+// middleware - CORS MUST be first
 app.use(express.json({ limit: '50mb' }))
 app.use(cors(corsOptions))
-app.options('*', cors(corsOptions)) // Handle preflight requests
+app.options('*', cors(corsOptions)) // Handle preflight requests BEFORE routes
+
+// routes - AFTER middleware
+app.use("/api/products", productRoutes)
 
 // Test connection and sync
 sequelize.authenticate()
@@ -55,6 +59,3 @@ sequelize.authenticate()
   .catch((err) => {
     console.error("🚫 Error connecting to MySQL -> Product Service", err)
   })
-
-// Routes
-app.use("/api/products", productRoutes)
