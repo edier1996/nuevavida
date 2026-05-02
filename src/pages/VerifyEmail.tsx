@@ -74,82 +74,70 @@ const VerifyEmail = () => {
 
   const handleResend = async () => {
     setIsResending(true);
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const resendOnce = async (timeoutMs: number) => {
-      const controller = new AbortController();
-      timer = setTimeout(() => controller.abort(), timeoutMs);
-
-      const response = await fetch(
-        `${USERS_API_BASE_URL}/api/users/resend-verification-code`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-          signal: controller.signal,
-        }
-      );
-
-      clearTimeout(timer);
-      timer = null;
-
-      const data = await response.json().catch(() => ({}));
-      return { response, data };
-    };
-
     const getFriendlyError = (error: unknown) => {
-      if (!(error instanceof Error)) {
-        return "No se pudo reenviar el código";
-      }
-
+      if (!(error instanceof Error)) return "No se pudo reenviar el código";
       const msg = error.message.toLowerCase();
-      if (
-        msg.includes("aborted") ||
-        msg.includes("aborterror") ||
-        msg.includes("signal is aborted")
-      ) {
-        return "El servidor tardó demasiado en responder. Intenta de nuevo en unos segundos.";
-      }
-
-      if (msg.includes("failed to fetch") || msg.includes("network")) {
+      if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("timeout")) {
         return "No hay conexión con el servicio de usuarios en este momento.";
       }
-
       return error.message;
     };
 
     try {
-      let payload = await resendOnce(15000);
+      const sameOriginBase =
+        typeof window !== "undefined" ? window.location.origin : "";
 
-      // Retry once when the first attempt times out/network-fails.
-      if (!payload.response.ok && payload.response.status >= 500) {
-        payload = await resendOnce(25000);
+      const rawTargets = [USERS_API_BASE_URL, sameOriginBase].filter(Boolean);
+      const targets = Array.from(
+        new Set(
+          rawTargets.map((base) => String(base).trim().replace(/\/+$/, ""))
+        )
+      );
+
+      let lastError = "";
+
+      for (const target of targets) {
+        try {
+          const response = await fetch(
+            `${target}/api/users/resend-verification-code`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email }),
+            }
+          );
+
+          const data = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            lastError =
+              (typeof data?.error === "string" && data.error) ||
+              (typeof data?.msg === "string" && data.msg) ||
+              `Error ${response.status}`;
+            continue;
+          }
+
+          if (data?.emailSent === false) {
+            lastError =
+              (typeof data?.emailError === "string" && data.emailError) ||
+              (typeof data?.msg === "string" && data.msg) ||
+              "No se pudo enviar el correo de verificación";
+            continue;
+          }
+
+          toast({
+            title: "Éxito",
+            description:
+              (typeof data?.msg === "string" && data.msg) ||
+              "Código de verificación reenviado a tu email",
+          });
+          return;
+        } catch (networkError) {
+          lastError = getFriendlyError(networkError);
+        }
       }
 
-      const { response, data } = payload;
-
-      if (!response.ok) {
-        throw new Error(
-          typeof data?.error === "string" && data.error
-            ? data.error
-            : "Error al reenviar el código"
-        );
-      }
-
-      if (data?.emailSent === false) {
-        throw new Error(
-          (typeof data?.emailError === "string" && data.emailError) ||
-            (typeof data?.msg === "string" && data.msg) ||
-            "No se pudo enviar el correo de verificación"
-        );
-      }
-
-      toast({
-        title: "Éxito",
-        description:
-          (typeof data?.msg === "string" && data.msg) ||
-          "Código de verificación reenviado a tu email",
-      });
+      throw new Error(lastError || "No se pudo reenviar el código");
     } catch (error) {
       toast({
         title: "Error",
@@ -157,9 +145,6 @@ const VerifyEmail = () => {
         variant: "destructive",
       });
     } finally {
-      if (timer) {
-        clearTimeout(timer);
-      }
       setIsResending(false);
     }
   };
