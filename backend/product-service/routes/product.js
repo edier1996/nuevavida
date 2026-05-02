@@ -3,6 +3,14 @@ const { Product } = require("../db")
 
 const router = express.Router()
 
+// Handle CORS preflight requests
+router.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
 // Create Product
 router.post("/create", async (req, res) => {
   const {
