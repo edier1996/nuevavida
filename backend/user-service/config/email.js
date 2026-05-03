@@ -3,15 +3,37 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const smtpHost = process.env.SMTP_HOST || process.env.NODEMAILER_HOST || 'smtp.gmail.com';
-const smtpPort = Number(process.env.SMTP_PORT || process.env.NODEMAILER_PORT || 465);
+const sendGridApiKey = process.env.SENDGRID_API_KEY || '';
+const useSendGrid = Boolean(sendGridApiKey);
+
+const smtpHost =
+  process.env.SMTP_HOST ||
+  process.env.NODEMAILER_HOST ||
+  (useSendGrid ? 'smtp.sendgrid.net' : 'smtp.gmail.com');
+
+const smtpPort = Number(
+  process.env.SMTP_PORT ||
+  process.env.NODEMAILER_PORT ||
+  (useSendGrid ? 587 : 465)
+);
+
 const smtpSecure =
   process.env.SMTP_SECURE === 'true' ||
   process.env.NODEMAILER_SECURE === 'true' ||
   smtpPort === 465;
-const smtpUser = process.env.SMTP_USER || process.env.NODEMAILER_EMAIL;
-const smtpPassword = process.env.SMTP_PASSWORD || process.env.NODEMAILER_PASSWORD;
+
+const smtpUser =
+  process.env.SMTP_USER ||
+  process.env.NODEMAILER_EMAIL ||
+  (useSendGrid ? 'apikey' : '');
+
+const smtpPassword =
+  process.env.SMTP_PASSWORD ||
+  process.env.NODEMAILER_PASSWORD ||
+  sendGridApiKey;
+
 const smtpFrom =
+  process.env.SENDGRID_FROM_EMAIL ||
   process.env.SMTP_FROM ||
   process.env.SENDER_EMAIL ||
   smtpUser;
@@ -49,6 +71,7 @@ const sanitizeErrorMessage = (message) => {
 };
 
 const getSmtpConfigStatus = () => ({
+  provider: useSendGrid ? 'sendgrid' : 'generic-smtp',
   host: smtpHost,
   port: smtpPort,
   secure: smtpSecure,
