@@ -36,6 +36,7 @@ const resolveApiBaseUrl = () => {
 
 const API_BASE_URL = resolveApiBaseUrl();
 const PRODUCT_API_FALLBACKS = ["https://nuevavida-production.up.railway.app"];
+const KNOWN_INVALID_PRODUCT_HOSTS = ["product-service-production.up.railway.app"];
 
 const buildApiUrl = (path: string, baseUrl: string) => {
   if (!baseUrl) return path;
@@ -44,7 +45,10 @@ const buildApiUrl = (path: string, baseUrl: string) => {
 
 const buildCandidateBaseUrls = () => {
   const normalizedPrimary = API_BASE_URL.trim().replace(/\/+$/, "");
-  const candidates = [normalizedPrimary, ...PRODUCT_API_FALLBACKS]
+  const shouldSkipPrimary = KNOWN_INVALID_PRODUCT_HOSTS.some((host) =>
+    normalizedPrimary.includes(host)
+  );
+  const candidates = [shouldSkipPrimary ? "" : normalizedPrimary, ...PRODUCT_API_FALLBACKS]
     .map((base) => base.trim().replace(/\/+$/, ""))
     .filter(Boolean);
 
