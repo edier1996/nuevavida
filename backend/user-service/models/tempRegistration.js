@@ -28,6 +28,14 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: false,
     },
+    verificationTokenHash: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    verificationTokenExpiry: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   }, {
     tableName: 'temp_registrations',
     timestamps: true,

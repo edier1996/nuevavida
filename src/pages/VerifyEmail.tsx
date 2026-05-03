@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,13 +14,56 @@ const VerifyEmail = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isTokenVerifying, setIsTokenVerifying] = useState(false);
+  const [tokenError, setTokenError] = useState("");
+  const [tokenVerified, setTokenVerified] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { verifyEmail } = useAuth();
-  const email = location.state?.email || "";
+  const { verifyEmail, verifyEmailToken } = useAuth();
+  const query = new URLSearchParams(location.search);
+  const verificationToken = (query.get("token") || "").trim();
+  const emailFromQuery = (query.get("email") || "").trim();
+  const email = location.state?.email || emailFromQuery;
   const emailSent = location.state?.emailSent !== false; // Default to true if not specified
 
-  if (!email) {
+  useEffect(() => {
+    if (!verificationToken) return;
+
+    let active = true;
+
+    const verifyTokenFlow = async () => {
+      setIsTokenVerifying(true);
+      setTokenError("");
+
+      const result = await verifyEmailToken(verificationToken);
+
+      if (!active) return;
+
+      if (!result.success) {
+        setTokenError(result.error || "No se pudo validar el enlace de verificación");
+        setIsTokenVerifying(false);
+        return;
+      }
+
+      setTokenVerified(true);
+      setIsTokenVerifying(false);
+
+      toast({
+        title: "Éxito",
+        description: "Correo verificado correctamente. Ingresando...",
+      });
+
+      setTimeout(() => navigate("/"), 1200);
+    };
+
+    verifyTokenFlow();
+
+    return () => {
+      active = false;
+    };
+  }, [navigate, verificationToken, verifyEmailToken]);
+
+  if (!email && !verificationToken) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
@@ -29,6 +72,34 @@ const VerifyEmail = () => {
             <Link to="/login" className="text-primary hover:underline">
               Volver al inicio de sesión
             </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (verificationToken && !email && (isTokenVerifying || tokenVerified || tokenError)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Verificación de correo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isTokenVerifying && (
+              <p className="text-sm text-muted-foreground">Validando enlace...</p>
+            )}
+            {tokenVerified && (
+              <p className="text-sm text-green-700">Correo verificado. Redirigiendo...</p>
+            )}
+            {!isTokenVerifying && !tokenVerified && tokenError && (
+              <div className="space-y-3">
+                <p className="text-sm text-destructive">{tokenError}</p>
+                <Link to="/login" className="text-primary hover:underline text-sm">
+                  Volver al inicio de sesión
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -165,6 +236,20 @@ const VerifyEmail = () => {
           <CardTitle>Verifica tu email</CardTitle>
         </CardHeader>
         <CardContent>
+          {verificationToken && (
+            <div className="mb-4 rounded border border-muted p-3 text-sm">
+              {isTokenVerifying && (
+                <p className="text-muted-foreground">Validando enlace de verificación...</p>
+              )}
+              {!isTokenVerifying && tokenError && (
+                <p className="text-destructive">{tokenError}</p>
+              )}
+              {!isTokenVerifying && tokenVerified && (
+                <p className="text-green-700">Correo verificado correctamente.</p>
+              )}
+            </div>
+          )}
+
           {emailSent ? (
             <p className="text-sm text-muted-foreground mb-4">
               Hemos enviado un código de verificación a <strong>{email}</strong>

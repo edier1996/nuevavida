@@ -92,7 +92,18 @@ const sendPasswordResetEmail = async (email, resetToken, resetLink) => {
   return withTimeout(transporter.sendMail(mailOptions), timeoutMs, 'Password reset email send');
 };
 
-const sendVerificationEmail = async (email, verificationCode) => {
+const sendVerificationEmail = async (email, verificationCode, verificationLink) => {
+  const verificationLinkHtml = verificationLink
+    ? `
+      <p>Tambien puedes verificar tu cuenta con un solo clic:</p>
+      <a href="${verificationLink}" style="background-color: #16a34a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+        Verificar mi correo
+      </a>
+      <p>Si el boton no funciona, copia y pega este enlace:</p>
+      <p>${verificationLink}</p>
+    `
+    : '';
+
   const mailOptions = {
     from: smtpFrom,
     to: email,
@@ -101,6 +112,7 @@ const sendVerificationEmail = async (email, verificationCode) => {
       <h2>Bienvenido a Nueva Vida</h2>
       <p>Tu código de verificación es:</p>
       <h1 style="color: #007bff; font-size: 32px; letter-spacing: 5px;">${verificationCode}</h1>
+      ${verificationLinkHtml}
       <p>Este código expira en 15 minutos.</p>
       <p>Si no creaste esta cuenta, ignora este correo.</p>
     `,

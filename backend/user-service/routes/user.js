@@ -2,6 +2,7 @@ const express = require("express")
 const { User, TempRegistration } = require("../db")
 const argon2 = require("argon2")
 const jwt = require("jsonwebtoken")
+const crypto = require("crypto")
 const {
   sendPasswordResetEmail,
   sendVerificationEmail,
@@ -10,6 +11,7 @@ const {
 } = require("../config/email")
 
 const router = express.Router()
+const VERIFICATION_EXPIRY_MINUTES = Number(process.env.EMAIL_VERIFICATION_EXPIRES_MINUTES || 15)
 
 // Handle CORS preflight requests
 router.options('*', (req, res) => {
@@ -30,6 +32,88 @@ const auth = (req, res, next) => {
     next()
   } catch (err) {
     res.status(401).json({ msg: "Token is not valid" })
+  }
+}
+
+const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "")
+
+const getFrontendBaseUrl = () =>
+  normalizeBaseUrl(process.env.FRONTEND_URL || "http://localhost:5173")
+
+const getVerificationSecret = () =>
+  process.env.EMAIL_VERIFICATION_SECRET || process.env.JWT_SECRET
+
+const createVerificationArtifacts = (tempReg) => {
+  const payload = {
+    type: "email_verification",
+    tempRegistrationId: tempReg.id,
+    email: tempReg.email,
+  }
+
+  const token = jwt.sign(payload, getVerificationSecret(), {
+    expiresIn: `${VERIFICATION_EXPIRY_MINUTES}m`,
+  })
+
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex")
+  const tokenExpiry = new Date(Date.now() + VERIFICATION_EXPIRY_MINUTES * 60 * 1000)
+
+  return { token, tokenHash, tokenExpiry }
+}
+
+const isTokenHashValid = (token, storedHash) => {
+  if (!token || !storedHash) return false
+  const incomingHash = crypto.createHash("sha256").update(token).digest("hex")
+  const incomingBuffer = Buffer.from(incomingHash)
+  const storedBuffer = Buffer.from(storedHash)
+  if (incomingBuffer.length !== storedBuffer.length) return false
+  return crypto.timingSafeEqual(incomingBuffer, storedBuffer)
+}
+
+const issueSessionToken = (userId) =>
+  jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "1h" })
+
+const buildVerificationLink = (token, email) => {
+  const frontendBase = getFrontendBaseUrl()
+  const tokenParam = encodeURIComponent(token)
+  const emailParam = encodeURIComponent(email)
+  return `${frontendBase}/verify-email?token=${tokenParam}&email=${emailParam}`
+}
+
+const completeRegistrationFromTemp = async (tempReg) => {
+  const existingUser = await User.findOne({ where: { email: tempReg.email } })
+  if (existingUser && existingUser.isEmailVerified) {
+    await tempReg.destroy()
+    return { user: existingUser, token: issueSessionToken(existingUser.id), alreadyVerified: true }
+  }
+
+  let user = existingUser
+
+  if (user) {
+    await user.update({
+      name: tempReg.name,
+      password: tempReg.password,
+      isEmailVerified: true,
+      emailVerificationCode: null,
+      emailVerificationCodeExpiry: null,
+    })
+  } else {
+    user = await User.create({
+      name: tempReg.name,
+      email: tempReg.email,
+      password: tempReg.password,
+      role: "user",
+      isEmailVerified: true,
+      emailVerificationCode: null,
+      emailVerificationCodeExpiry: null,
+    })
+  }
+
+  await tempReg.destroy()
+
+  return {
+    user,
+    token: issueSessionToken(user.id),
+    alreadyVerified: false,
   }
 }
 
@@ -58,7 +142,7 @@ router.post("/register", async (req, res) => {
 
     // Generate 6-digit verification code
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const verificationCodeExpiry = new Date(Date.now() + 15 * 60000); // 15 minutes
+    const verificationCodeExpiry = new Date(Date.now() + VERIFICATION_EXPIRY_MINUTES * 60000);
 
     // Create temporary registration (NOT a real user yet)
     const tempReg = await TempRegistration.create({
@@ -69,11 +153,19 @@ router.post("/register", async (req, res) => {
       verificationCodeExpiry,
     });
 
+    const { token: verificationToken, tokenHash, tokenExpiry } = createVerificationArtifacts(tempReg)
+    await tempReg.update({
+      verificationTokenHash: tokenHash,
+      verificationTokenExpiry: tokenExpiry,
+    })
+
+    const verificationLink = buildVerificationLink(verificationToken, email)
+
     // Try to send verification email, but don't fail if it doesn't work
     let emailSent = false;
     let emailError = null;
     try {
-      await sendVerificationEmail(email, verificationCode);
+      await sendVerificationEmail(email, verificationCode, verificationLink);
       emailSent = true;
       console.log(`✅ Verification email sent to ${email}`);
     } catch (mailError) {
@@ -91,7 +183,7 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({
       msg: emailSent
-        ? "Verification code sent to your email. Please verify to complete registration."
+        ? "Verification code and link sent to your email. Please verify to complete registration."
         : "Registration created. Check your email for verification code. If you don't receive it, use 'Resend Code'.",
       email: email,
       tempRegistrationId: tempReg.id,
@@ -191,27 +283,12 @@ router.post("/verify-email", async (req, res) => {
       return res.status(400).json({ error: "Verification code has expired. Please register again." });
     }
 
-    // NOW create the actual user in the database
-    const user = await User.create({
-      name: tempReg.name,
-      email: tempReg.email,
-      password: tempReg.password,
-      role: 'user',
-      isEmailVerified: true, // Email is verified
-      emailVerificationCode: null,
-      emailVerificationCodeExpiry: null,
-    });
-
-    // Delete temp registration
-    await tempReg.destroy();
-
-    // Generate JWT token
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    const { user, token, alreadyVerified } = await completeRegistrationFromTemp(tempReg);
 
     res.json({
-      msg: "Email verified successfully. Account created!",
+      msg: alreadyVerified
+        ? "Email already verified. Logged in successfully."
+        : "Email verified successfully. Account created!",
       token,
       userId: user.id,
       user: {
@@ -224,6 +301,67 @@ router.post("/verify-email", async (req, res) => {
   } catch (error) {
     console.error("Error in verify-email:", error);
     res.status(500).json({ error: error.message });
+  }
+})
+
+// Verify email with secure token from email link
+router.post("/verify-email-token", async (req, res) => {
+  try {
+    const { token } = req.body || {}
+
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "Verification token is required" })
+    }
+
+    let payload
+    try {
+      payload = jwt.verify(token, getVerificationSecret())
+    } catch (error) {
+      if (error?.name === "TokenExpiredError") {
+        return res.status(400).json({ error: "Verification link has expired. Request a new one." })
+      }
+      return res.status(400).json({ error: "Invalid verification link" })
+    }
+
+    if (payload?.type !== "email_verification" || !payload?.tempRegistrationId || !payload?.email) {
+      return res.status(400).json({ error: "Invalid verification link payload" })
+    }
+
+    const tempReg = await TempRegistration.findOne({
+      where: { id: payload.tempRegistrationId, email: payload.email },
+    })
+
+    if (!tempReg) {
+      return res.status(404).json({ error: "Verification request not found. Please register again." })
+    }
+
+    if (!tempReg.verificationTokenExpiry || new Date() > tempReg.verificationTokenExpiry) {
+      await tempReg.destroy()
+      return res.status(400).json({ error: "Verification link has expired. Please register again." })
+    }
+
+    if (!isTokenHashValid(token, tempReg.verificationTokenHash)) {
+      return res.status(400).json({ error: "Verification link is not valid anymore." })
+    }
+
+    const { user, token: sessionToken, alreadyVerified } = await completeRegistrationFromTemp(tempReg)
+
+    return res.json({
+      msg: alreadyVerified
+        ? "Email already verified. Logged in successfully."
+        : "Email verified successfully. Account created!",
+      token: sessionToken,
+      userId: user.id,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    })
+  } catch (error) {
+    console.error("Error in verify-email-token:", error)
+    return res.status(500).json({ error: error.message })
   }
 })
 
@@ -244,12 +382,17 @@ router.post("/resend-verification-code", async (req, res) => {
 
     // Generate new verification code
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const verificationCodeExpiry = new Date(Date.now() + 15 * 60000); // 15 minutes
+    const verificationCodeExpiry = new Date(Date.now() + VERIFICATION_EXPIRY_MINUTES * 60000);
+
+    const { token: verificationToken, tokenHash, tokenExpiry } = createVerificationArtifacts(tempReg)
+    const verificationLink = buildVerificationLink(verificationToken, email)
 
     await TempRegistration.update(
       {
         verificationCode,
         verificationCodeExpiry,
+        verificationTokenHash: tokenHash,
+        verificationTokenExpiry: tokenExpiry,
       },
       { where: { id: tempReg.id } }
     );
@@ -258,7 +401,7 @@ router.post("/resend-verification-code", async (req, res) => {
     let emailSent = false;
     let emailError = null;
     try {
-      await sendVerificationEmail(email, verificationCode);
+      await sendVerificationEmail(email, verificationCode, verificationLink);
       emailSent = true;
       console.log(`✅ Verification email resent to ${email}`);
     } catch (mailError) {

@@ -31,6 +31,7 @@ interface AuthContextType {
     address?: string
   ) => Promise<{ success: boolean; error?: string; email?: string; emailSent?: boolean }>;
   verifyEmail: (email: string, verificationCode: string) => Promise<{ success: boolean; error?: string; token?: string }>;
+  verifyEmailToken: (verificationToken: string) => Promise<{ success: boolean; error?: string; token?: string }>;
   createUser: (
     name: string,
     email: string,
@@ -60,6 +61,13 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
+
+  const persistAuthSession = (data: { token?: string; user?: User }) => {
+    if (!data?.token || !data?.user) return;
+    localStorage.setItem("auth_token", data.token);
+    setUser(data.user);
+    localStorage.setItem("user", JSON.stringify(data.user));
+  };
 
   useEffect(() => {
     const storedUserRaw = localStorage.getItem("user");
@@ -274,20 +282,51 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       const data = await response.json();
 
-      // Save token and user info
-      if (data.token) {
-        localStorage.setItem("auth_token", data.token);
+      const verifiedUser: User = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+      };
 
-        const user: User = {
-          id: data.user.id,
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role,
-        };
+      persistAuthSession({ token: data.token, user: verifiedUser });
 
-        setUser(user);
-        localStorage.setItem("user", JSON.stringify(user));
+      return { success: true, token: data.token };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Verification failed",
+      };
+    }
+  };
+
+  const verifyEmailToken = async (
+    verificationToken: string
+  ): Promise<{ success: boolean; error?: string; token?: string }> => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/users/verify-email-token`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: verificationToken }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.error || "Verification failed" };
       }
+
+      const data = await response.json();
+      const verifiedUser: User = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+      };
+
+      persistAuthSession({ token: data.token, user: verifiedUser });
 
       return { success: true, token: data.token };
     } catch (error) {
@@ -354,6 +393,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     login,
     register,
     verifyEmail,
+    verifyEmailToken,
     createUser,
     logout,
     isAuthenticated: !!user,
