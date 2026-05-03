@@ -35,14 +35,26 @@ const resolveApiBaseUrl = () => {
 };
 
 const API_BASE_URL = resolveApiBaseUrl();
+const PRODUCT_API_FALLBACKS = ["https://nuevavida-production.up.railway.app"];
 
 const buildApiUrl = (path: string, baseUrl: string) => {
   if (!baseUrl) return path;
   return `${baseUrl}${path}`;
 };
 
+const buildCandidateBaseUrls = () => {
+  const normalizedPrimary = API_BASE_URL.trim().replace(/\/+$/, "");
+  const candidates = [normalizedPrimary, ...PRODUCT_API_FALLBACKS]
+    .map((base) => base.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+
+  return Array.from(new Set(candidates));
+};
+
 const fetchProductsApi = async (path: string, init?: RequestInit) => {
-  const primaryUrl = buildApiUrl(path, API_BASE_URL);
+  const candidateBaseUrls = buildCandidateBaseUrls();
+  const primaryBaseUrl = candidateBaseUrls[0] || "";
+  const primaryUrl = buildApiUrl(path, primaryBaseUrl);
 
   try {
     const primaryResponse = await fetch(primaryUrl, init);
@@ -51,20 +63,34 @@ const fetchProductsApi = async (path: string, init?: RequestInit) => {
     // reply 404 without CORS headers. Retry against same-origin /api.
     if (
       typeof window !== "undefined" &&
-      API_BASE_URL &&
+      primaryBaseUrl &&
       !primaryUrl.startsWith(window.location.origin) &&
       primaryResponse.status === 404
     ) {
+      for (const candidateBaseUrl of candidateBaseUrls.slice(1)) {
+        try {
+          const candidateResponse = await fetch(buildApiUrl(path, candidateBaseUrl), init);
+          if (candidateResponse.ok) return candidateResponse;
+        } catch {
+          // Try next candidate.
+        }
+      }
+
       return fetch(buildApiUrl(path, window.location.origin), init);
     }
 
     return primaryResponse;
   } catch {
-    if (
-      typeof window !== "undefined" &&
-      API_BASE_URL &&
-      !primaryUrl.startsWith(window.location.origin)
-    ) {
+    for (const candidateBaseUrl of candidateBaseUrls.slice(1)) {
+      try {
+        const candidateResponse = await fetch(buildApiUrl(path, candidateBaseUrl), init);
+        if (candidateResponse.ok) return candidateResponse;
+      } catch {
+        // Try next candidate.
+      }
+    }
+
+    if (typeof window !== "undefined" && primaryBaseUrl && !primaryUrl.startsWith(window.location.origin)) {
       return fetch(buildApiUrl(path, window.location.origin), init);
     }
 
