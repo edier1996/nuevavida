@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const smtpHost = process.env.SMTP_HOST || process.env.NODEMAILER_HOST || 'smtp.gmail.com';
-const smtpPort = Number(process.env.SMTP_PORT || process.env.NODEMAILER_PORT || 587);
+const smtpPort = Number(process.env.SMTP_PORT || process.env.NODEMAILER_PORT || 465);
 const smtpSecure =
   process.env.SMTP_SECURE === 'true' ||
   process.env.NODEMAILER_SECURE === 'true' ||
