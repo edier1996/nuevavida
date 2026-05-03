@@ -1,7 +1,17 @@
 const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
 const dotenv = require('dotenv');
 
 dotenv.config();
+
+const gmailApiClientId = process.env.GMAIL_API_CLIENT_ID || '';
+const gmailApiClientSecret = process.env.GMAIL_API_CLIENT_SECRET || '';
+const gmailApiRefreshToken = process.env.GMAIL_API_REFRESH_TOKEN || '';
+const gmailApiRedirectUri = process.env.GMAIL_API_REDIRECT_URI || 'https://developers.google.com/oauthplayground';
+const gmailApiSender = process.env.GMAIL_API_SENDER_EMAIL || '';
+const useGmailApi = Boolean(
+  gmailApiClientId && gmailApiClientSecret && gmailApiRefreshToken && gmailApiSender
+);
 
 const sendGridApiKey = process.env.SENDGRID_API_KEY || '';
 const useSendGrid = Boolean(sendGridApiKey);
@@ -33,10 +43,25 @@ const smtpPassword =
   sendGridApiKey;
 
 const smtpFrom =
+  gmailApiSender ||
   process.env.SENDGRID_FROM_EMAIL ||
   process.env.SMTP_FROM ||
   process.env.SENDER_EMAIL ||
   smtpUser;
+
+let gmailClient = null;
+let gmailOAuth2Client = null;
+
+if (useGmailApi) {
+  gmailOAuth2Client = new google.auth.OAuth2(
+    gmailApiClientId,
+    gmailApiClientSecret,
+    gmailApiRedirectUri
+  );
+
+  gmailOAuth2Client.setCredentials({ refresh_token: gmailApiRefreshToken });
+  gmailClient = google.gmail({ version: 'v1', auth: gmailOAuth2Client });
+}
 
 // Support both Gmail and generic SMTP
 const transporter = nodemailer.createTransport({
@@ -70,18 +95,87 @@ const sanitizeErrorMessage = (message) => {
   return String(message).replace(/(password|pass|token|secret)=?[^\s]*/gi, '$1=***');
 };
 
+const toBase64Url = (content) =>
+  Buffer.from(content, 'utf-8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+const buildRawGmailMessage = ({ from, to, subject, html }) => {
+  const headers = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=UTF-8',
+    '',
+    html,
+  ];
+
+  return toBase64Url(headers.join('\n'));
+};
+
+const sendViaGmailApi = async ({ to, subject, html }) => {
+  if (!gmailClient || !gmailOAuth2Client) {
+    throw new Error('Gmail API is not configured');
+  }
+
+  await gmailOAuth2Client.getAccessToken();
+
+  const raw = buildRawGmailMessage({
+    from: smtpFrom,
+    to,
+    subject,
+    html,
+  });
+
+  return gmailClient.users.messages.send({
+    userId: 'me',
+    requestBody: { raw },
+  });
+};
+
+const sendEmail = async ({ to, subject, html }, label) => {
+  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 12000);
+
+  if (useGmailApi) {
+    return withTimeout(sendViaGmailApi({ to, subject, html }), timeoutMs, label);
+  }
+
+  return withTimeout(
+    transporter.sendMail({
+      from: smtpFrom,
+      to,
+      subject,
+      html,
+    }),
+    timeoutMs,
+    label
+  );
+};
+
 const getSmtpConfigStatus = () => ({
-  provider: useSendGrid ? 'sendgrid' : 'generic-smtp',
+  provider: useGmailApi ? 'gmail-api' : useSendGrid ? 'sendgrid' : 'generic-smtp',
   host: smtpHost,
   port: smtpPort,
   secure: smtpSecure,
   hasUser: Boolean(smtpUser),
   hasPassword: Boolean(smtpPassword),
+  hasGmailApiClientId: Boolean(gmailApiClientId),
+  hasGmailApiClientSecret: Boolean(gmailApiClientSecret),
+  hasGmailApiRefreshToken: Boolean(gmailApiRefreshToken),
+  gmailApiSender,
   from: smtpFrom,
 });
 
 const verifySmtpConnection = async () => {
   try {
+    if (useGmailApi) {
+      await gmailOAuth2Client.getAccessToken();
+      return { ok: true };
+    }
+
     await transporter.verify();
     return { ok: true };
   } catch (error) {
@@ -94,11 +188,7 @@ const verifySmtpConnection = async () => {
 };
 
 const sendPasswordResetEmail = async (email, resetToken, resetLink) => {
-  const mailOptions = {
-    from: smtpFrom,
-    to: email,
-    subject: 'Recuperar contraseña - Nueva Vida',
-    html: `
+  const html = `
       <h2>Recuperar contraseña</h2>
       <p>Haz clic en el siguiente enlace para recuperar tu contraseña:</p>
       <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
@@ -108,11 +198,16 @@ const sendPasswordResetEmail = async (email, resetToken, resetLink) => {
       <p>${resetLink}</p>
       <p>Este enlace expira en 1 hora.</p>
       <p>Si no solicitaste recuperar tu contraseña, ignora este correo.</p>
-    `,
-  };
+    `;
 
-  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 12000);
-  return withTimeout(transporter.sendMail(mailOptions), timeoutMs, 'Password reset email send');
+  return sendEmail(
+    {
+      to: email,
+      subject: 'Recuperar contraseña - Nueva Vida',
+      html,
+    },
+    'Password reset email send'
+  );
 };
 
 const sendVerificationEmail = async (email, verificationCode, verificationLink) => {
@@ -127,22 +222,23 @@ const sendVerificationEmail = async (email, verificationCode, verificationLink) 
     `
     : '';
 
-  const mailOptions = {
-    from: smtpFrom,
-    to: email,
-    subject: 'Verifica tu email - Nueva Vida',
-    html: `
+  const html = `
       <h2>Bienvenido a Nueva Vida</h2>
       <p>Tu código de verificación es:</p>
       <h1 style="color: #007bff; font-size: 32px; letter-spacing: 5px;">${verificationCode}</h1>
       ${verificationLinkHtml}
       <p>Este código expira en 15 minutos.</p>
       <p>Si no creaste esta cuenta, ignora este correo.</p>
-    `,
-  };
+    `;
 
-  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 12000);
-  return withTimeout(transporter.sendMail(mailOptions), timeoutMs, 'Verification email send');
+  return sendEmail(
+    {
+      to: email,
+      subject: 'Verifica tu email - Nueva Vida',
+      html,
+    },
+    'Verification email send'
+  );
 };
 
 module.exports = {
