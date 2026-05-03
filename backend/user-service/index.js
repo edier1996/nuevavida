@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 5000
 
 dotenv.config()
 const app = express()
+let dbReady = false
+let lastDbError = null
 
 // CORS configuration
 const allowedOrigins = [
@@ -51,6 +53,18 @@ app.use((req, res, next) => {
 // routes - AFTER middleware
 app.use("/api/users", userRoutes)
 
+app.get('/api/users/health', (_req, res) => {
+  if (dbReady) {
+    return res.status(200).json({ status: 'ok', db: 'connected' })
+  }
+
+  return res.status(503).json({
+    status: 'degraded',
+    db: 'disconnected',
+    error: lastDbError,
+  })
+})
+
 // Seed the default admin user if it doesn't already exist
 const initAdmin = async () => {
   try {
@@ -75,19 +89,27 @@ const initAdmin = async () => {
   }
 };
 
-// Test connection and sync
-sequelize.authenticate()
-  .then(() => {
+const initializeDatabase = async () => {
+  try {
+    await sequelize.authenticate()
     console.log('✅ User Service is Connected to MySQL')
-    return sequelize.sync({ alter: true })
-  })
-  .then(async () => {
+    await sequelize.sync({ alter: true })
     console.log('Database synchronized')
     await initAdmin()
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`)
-    })
-  })
-  .catch((err) => {
+    dbReady = true
+    lastDbError = null
+  } catch (err) {
+    dbReady = false
+    lastDbError = err?.message || 'Unknown DB error'
     console.error("🚫 Failed to connect to Database -> User Service", err)
-  })
+    // Keep process alive and retry to avoid 502 from Railway edge.
+    setTimeout(() => {
+      initializeDatabase().catch(() => {})
+    }, 10000)
+  }
+}
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`)
+  initializeDatabase().catch(() => {})
+})
