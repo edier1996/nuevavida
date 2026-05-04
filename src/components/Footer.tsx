@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Recycle } from "lucide-react";
 import logo from "@/assets/logo.jpeg";
 
 const Footer = () => {
@@ -18,10 +17,9 @@ const Footer = () => {
             <p className="mt-3 max-w-sm text-sm leading-6 text-white/80">
               Plataforma solidaria para reutilizar objetos con criterio social y reducir desperdicio en la comunidad.
             </p>
-            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">
-              <Recycle className="h-3 w-3" strokeWidth={2.5} />
+            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
               Economia circular con impacto local
-            </div>
+            </p>
           </div>
           <div>
             <h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/70">Plataforma</h4>
@@ -48,12 +46,9 @@ const Footer = () => {
             </ul>
           </div>
         </div>
-        <div className="mt-7 flex flex-col gap-2 border-t border-white/15 pt-4 text-[11px] text-white/65 md:flex-row md:items-center md:justify-between">
+        <div className="mt-7 flex flex-col gap-2 pt-4 text-[11px] text-white/65 md:flex-row md:items-center md:justify-between">
           <p>© 1327 Nueva Vida. Todos los derechos reservados.</p>
-          <div className="flex items-center gap-1">
-            <Recycle className="h-3 w-3 text-white/80" strokeWidth={2.5} />
-            Promoviendo la reutilizacion responsable
-          </div>
+          <p>Promoviendo la reutilizacion responsable</p>
         </div>
       </div>
     </footer>

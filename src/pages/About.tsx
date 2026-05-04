@@ -1,13 +1,10 @@
 import Header from "@/components/Header";
 import React from "react";
 
-const Section = ({ emoji, title, children }: { emoji: string; title: string; children: React.ReactNode }) => (
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="mt-10">
-    <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-      <span>{emoji}</span> {title}
-    </h2>
+    <h2 className="text-xl font-semibold text-foreground">{title}</h2>
     <div className="mt-3 space-y-3 text-sm text-muted-foreground">{children}</div>
-    <hr className="mt-8 border-border" />
   </div>
 );
 
@@ -18,30 +15,28 @@ const About = () => (
 
       {/* Hero */}
       <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-foreground">🌱 NUEVA VIDA</h1>
+        <h1 className="text-4xl font-bold text-foreground">NUEVA VIDA</h1>
         <p className="mt-2 text-base text-muted-foreground italic">
           "Promoviendo la economía circular y el bienestar social"
         </p>
       </div>
 
-      <hr className="border-border" />
-
       {/* Misión */}
-      <Section emoji="🧭" title="MISIÓN">
+      <Section title="MISIÓN">
         <p>
           Nueva Vida es una plataforma digital que conecta personas para donar, reutilizar y aprovechar objetos en buen estado, reduciendo el desperdicio y fomentando la solidaridad. Buscamos transformar lo que otros ya no usan en oportunidades para quienes lo necesitan, generando impacto social, económico y ambiental positivo.
         </p>
       </Section>
 
       {/* Visión */}
-      <Section emoji="🔭" title="VISIÓN">
+      <Section title="VISIÓN">
         <p>
           Ser la plataforma líder en América Latina en economía circular solidaria, reconocida por reducir el desperdicio, fortalecer comunidades y mejorar la calidad de vida de miles de personas, promoviendo una cultura donde reutilizar y compartir sea parte del día a día.
         </p>
       </Section>
 
       {/* Quiénes somos */}
-      <Section emoji="👥" title="¿QUIÉNES SOMOS?">
+      <Section title="¿QUIÉNES SOMOS?">
         <p>
           Somos una iniciativa social y tecnológica comprometida con el bienestar de las comunidades. Nueva Vida nace con el propósito de darle una segunda oportunidad a los objetos y una primera oportunidad a muchas personas.
         </p>
@@ -51,19 +46,19 @@ const About = () => (
       </Section>
 
       {/* Qué es */}
-      <Section emoji="💡" title="¿QUÉ ES NUEVA VIDA?">
+      <Section title="¿QUÉ ES NUEVA VIDA?">
         <p>Nueva Vida es una plataforma donde los usuarios pueden:</p>
         <ul className="list-none space-y-1 pl-2">
-          <li>📦 Donar objetos que ya no usan</li>
-          <li>🔍 Explorar artículos disponibles</li>
-          <li>🤝 Recibir productos de forma gratuita</li>
-          <li>♻️ Contribuir a reducir residuos</li>
+          <li>Donar objetos que ya no usan</li>
+          <li>Explorar artículos disponibles</li>
+          <li>Recibir productos de forma gratuita</li>
+          <li>Contribuir a reducir residuos</li>
         </ul>
         <p>Funciona como un puente entre quienes tienen algo para dar y quienes lo necesitan.</p>
       </Section>
 
       {/* Objetivos */}
-      <Section emoji="🎯" title="OBJETIVOS">
+      <Section title="OBJETIVOS">
         <p className="font-medium text-foreground">Objetivo General</p>
         <p>Promover la reutilización de bienes mediante una plataforma digital que fomente la solidaridad y reduzca el impacto ambiental.</p>
         <p className="font-medium text-foreground mt-2">Objetivos Específicos</p>
@@ -77,7 +72,7 @@ const About = () => (
       </Section>
 
       {/* Impacto */}
-      <Section emoji="🌍" title="IMPACTO DE NUEVA VIDA">
+      <Section title="IMPACTO DE NUEVA VIDA">
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg bg-card border border-border p-4">
             <p className="font-semibold text-foreground mb-2">Impacto Social</p>
@@ -107,7 +102,7 @@ const About = () => (
       </Section>
 
       {/* Justificación */}
-      <Section emoji="🧱" title="JUSTIFICACIÓN DE LA PLATAFORMA">
+      <Section title="JUSTIFICACIÓN DE LA PLATAFORMA">
         <p>
           Actualmente, millones de objetos en buen estado son desechados diariamente, generando contaminación y desperdicio de recursos. Al mismo tiempo, muchas personas carecen de acceso a bienes básicos.
         </p>
@@ -125,7 +120,7 @@ const About = () => (
       </Section>
 
       {/* Cómo funciona */}
-      <Section emoji="⚙️" title="¿CÓMO FUNCIONA?">
+      <Section title="¿CÓMO FUNCIONA?">
         <ol className="list-decimal pl-5 space-y-1">
           <li>El usuario se registra</li>
           <li>Publica un objeto que desea donar</li>
@@ -136,7 +131,7 @@ const About = () => (
       </Section>
 
       {/* Valores */}
-      <Section emoji="❤️" title="VALORES">
+      <Section title="VALORES">
         <ul className="list-disc pl-5 space-y-1">
           <li>Solidaridad</li>
           <li>Responsabilidad social</li>
@@ -148,7 +143,7 @@ const About = () => (
 
       {/* Lema */}
       <div className="mt-10 rounded-xl bg-primary/10 border border-primary/20 p-6 text-center">
-        <p className="text-base font-semibold text-foreground">📢 LEMA</p>
+        <p className="text-base font-semibold text-foreground">LEMA</p>
         <p className="mt-2 text-lg italic text-muted-foreground">
           "Lo que ya no usas puede cambiar la vida de alguien más."
         </p>
