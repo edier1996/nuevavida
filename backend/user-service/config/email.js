@@ -1,190 +1,148 @@
-const nodemailer = require('nodemailer');
-const { google } = require('googleapis');
+const https = require('https');
 const dotenv = require('dotenv');
 
 dotenv.config();
 
-const gmailApiClientId = process.env.GMAIL_API_CLIENT_ID || '';
-const gmailApiClientSecret = process.env.GMAIL_API_CLIENT_SECRET || '';
-const gmailApiRefreshToken = process.env.GMAIL_API_REFRESH_TOKEN || '';
-const gmailApiRedirectUri = process.env.GMAIL_API_REDIRECT_URI || 'https://developers.google.com/oauthplayground';
-const gmailApiSender = process.env.GMAIL_API_SENDER_EMAIL || '';
-const useGmailApi = Boolean(
-  gmailApiClientId && gmailApiClientSecret && gmailApiRefreshToken && gmailApiSender
-);
+// --- Brevo HTTP API (primary — uses port 443, never blocked) ---
+const brevoApiKey = process.env.BREVO_API_KEY || '';
+const useBrevoApi = Boolean(brevoApiKey);
 
-const sendGridApiKey = process.env.SENDGRID_API_KEY || '';
-const useSendGrid = Boolean(sendGridApiKey);
-
-const smtpHost =
-  process.env.SMTP_HOST ||
-  process.env.NODEMAILER_HOST ||
-  (useSendGrid ? 'smtp.sendgrid.net' : 'smtp.gmail.com');
-
-const smtpPort = Number(
-  process.env.SMTP_PORT ||
-  process.env.NODEMAILER_PORT ||
-  (useSendGrid ? 587 : 465)
-);
-
-const smtpSecure =
-  process.env.SMTP_SECURE === 'true' ||
-  process.env.NODEMAILER_SECURE === 'true' ||
-  smtpPort === 465;
-
-const smtpUser =
-  process.env.SMTP_USER ||
-  process.env.NODEMAILER_EMAIL ||
-  (useSendGrid ? 'apikey' : '');
-
-const smtpPassword =
-  process.env.SMTP_PASSWORD ||
-  process.env.NODEMAILER_PASSWORD ||
-  sendGridApiKey;
-
-const smtpFrom =
-  gmailApiSender ||
-  process.env.SENDGRID_FROM_EMAIL ||
+const senderEmail =
   process.env.SMTP_FROM ||
   process.env.SENDER_EMAIL ||
-  smtpUser;
+  process.env.BREVO_FROM_EMAIL ||
+  'no-reply@nuevavida1327.com';
 
-let gmailClient = null;
-let gmailOAuth2Client = null;
+const senderName = process.env.SENDER_NAME || 'Nueva Vida';
 
-if (useGmailApi) {
-  gmailOAuth2Client = new google.auth.OAuth2(
-    gmailApiClientId,
-    gmailApiClientSecret,
-    gmailApiRedirectUri
-  );
-
-  gmailOAuth2Client.setCredentials({ refresh_token: gmailApiRefreshToken });
-  gmailClient = google.gmail({ version: 'v1', auth: gmailOAuth2Client });
+// --- Fallback: nodemailer SMTP ---
+let transporter = null;
+let useSMTP = false;
+if (!useBrevoApi) {
+  const nodemailer = require('nodemailer');
+  const smtpHost = process.env.SMTP_HOST || process.env.NODEMAILER_HOST || '';
+  const smtpPort = Number(process.env.SMTP_PORT || process.env.NODEMAILER_PORT || 587);
+  const smtpSecure = process.env.SMTP_SECURE === 'true' || smtpPort === 465;
+  const smtpUser = process.env.SMTP_USER || process.env.NODEMAILER_EMAIL || '';
+  const smtpPassword = process.env.SMTP_PASSWORD || process.env.NODEMAILER_PASSWORD || '';
+  if (smtpHost && smtpUser && smtpPassword) {
+    transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+      auth: { user: smtpUser, pass: smtpPassword },
+    });
+    useSMTP = true;
+  }
 }
 
-// Support both Gmail and generic SMTP
-const transporter = nodemailer.createTransport({
-  host: smtpHost,
-  port: smtpPort,
-  secure: smtpSecure, // true for 465, false for other ports
-  connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10000),
-  greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
-  socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 10000),
-  auth: {
-    user: smtpUser,
-    pass: smtpPassword,
-  },
-});
+const sanitizeErrorMessage = (message) => {
+  if (!message) return 'Unknown email error';
+  return String(message).replace(/(password|pass|token|secret|api.key)=?[^\s]*/gi, '$1=***');
+};
 
 const withTimeout = (promise, ms, label) => {
   let timer = null;
   const timeoutPromise = new Promise((_, reject) => {
-    timer = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${ms}ms`));
-    }, ms);
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
   });
-
   return Promise.race([promise, timeoutPromise]).finally(() => {
     if (timer) clearTimeout(timer);
   });
 };
 
-const sanitizeErrorMessage = (message) => {
-  if (!message) return 'Unknown SMTP error';
-  return String(message).replace(/(password|pass|token|secret)=?[^\s]*/gi, '$1=***');
-};
+const sendViaBrevoApi = ({ to, subject, html }) =>
+  new Promise((resolve, reject) => {
+    const payload = JSON.stringify({
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    });
 
-const toBase64Url = (content) =>
-  Buffer.from(content, 'utf-8')
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+    const options = {
+      hostname: 'api.brevo.com',
+      path: '/v3/smtp/email',
+      method: 'POST',
+      headers: {
+        'api-key': brevoApiKey,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    };
 
-const buildRawGmailMessage = ({ from, to, subject, html }) => {
-  const headers = [
-    `From: ${from}`,
-    `To: ${to}`,
-    `Subject: ${subject}`,
-    'MIME-Version: 1.0',
-    'Content-Type: text/html; charset=UTF-8',
-    '',
-    html,
-  ];
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve({ messageId: JSON.parse(data || '{}').messageId });
+        } else {
+          reject(new Error(`Brevo API error ${res.statusCode}: ${data}`));
+        }
+      });
+    });
 
-  return toBase64Url(headers.join('\n'));
-};
-
-const sendViaGmailApi = async ({ to, subject, html }) => {
-  if (!gmailClient || !gmailOAuth2Client) {
-    throw new Error('Gmail API is not configured');
-  }
-
-  await gmailOAuth2Client.getAccessToken();
-
-  const raw = buildRawGmailMessage({
-    from: smtpFrom,
-    to,
-    subject,
-    html,
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
   });
-
-  return gmailClient.users.messages.send({
-    userId: 'me',
-    requestBody: { raw },
-  });
-};
 
 const sendEmail = async ({ to, subject, html }, label) => {
-  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 12000);
+  const timeoutMs = Number(process.env.EMAIL_SEND_TIMEOUT_MS || 15000);
 
-  if (useGmailApi) {
-    return withTimeout(sendViaGmailApi({ to, subject, html }), timeoutMs, label);
+  if (useBrevoApi) {
+    return withTimeout(sendViaBrevoApi({ to, subject, html }), timeoutMs, label || 'Brevo API send');
   }
 
-  return withTimeout(
-    transporter.sendMail({
-      from: smtpFrom,
-      to,
-      subject,
-      html,
-    }),
-    timeoutMs,
-    label
-  );
+  if (useSMTP) {
+    return withTimeout(
+      transporter.sendMail({ from: senderEmail, to, subject, html }),
+      timeoutMs,
+      label || 'SMTP send'
+    );
+  }
+
+  throw new Error('No email provider configured. Set BREVO_API_KEY or SMTP_* variables.');
 };
 
 const getSmtpConfigStatus = () => ({
-  provider: useGmailApi ? 'gmail-api' : useSendGrid ? 'sendgrid' : 'generic-smtp',
-  host: smtpHost,
-  port: smtpPort,
-  secure: smtpSecure,
-  hasUser: Boolean(smtpUser),
-  hasPassword: Boolean(smtpPassword),
-  hasGmailApiClientId: Boolean(gmailApiClientId),
-  hasGmailApiClientSecret: Boolean(gmailApiClientSecret),
-  hasGmailApiRefreshToken: Boolean(gmailApiRefreshToken),
-  gmailApiSender,
-  from: smtpFrom,
+  provider: useBrevoApi ? 'brevo-api' : useSMTP ? 'smtp' : 'none',
+  hasBrevoApiKey: Boolean(brevoApiKey),
+  from: senderEmail,
+  senderName,
 });
 
 const verifySmtpConnection = async () => {
-  try {
-    if (useGmailApi) {
-      await gmailOAuth2Client.getAccessToken();
-      return { ok: true };
-    }
-
-    await transporter.verify();
-    return { ok: true };
-  } catch (error) {
-    return {
-      ok: false,
-      error: sanitizeErrorMessage(error?.message),
-      code: error?.code || null,
-    };
+  if (useBrevoApi) {
+    // Quick connectivity check against Brevo API
+    return new Promise((resolve) => {
+      const req = https.request(
+        { hostname: 'api.brevo.com', path: '/v3/account', method: 'GET',
+          headers: { 'api-key': brevoApiKey } },
+        (res) => {
+          resolve({ ok: res.statusCode === 200, statusCode: res.statusCode });
+          res.resume();
+        }
+      );
+      req.on('error', (err) => resolve({ ok: false, error: sanitizeErrorMessage(err.message) }));
+      req.end();
+    });
   }
+
+  if (useSMTP && transporter) {
+    try {
+      await transporter.verify();
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: sanitizeErrorMessage(error?.message) };
+    }
+  }
+
+  return { ok: false, error: 'No email provider configured' };
 };
 
 const sendPasswordResetEmail = async (email, resetToken, resetLink) => {
