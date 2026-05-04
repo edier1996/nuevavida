@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --background: 122 25% 96%;
+    --background: 123 31% 94%;
     --foreground: 152 33% 13%;
 
     --card: 110 38% 99%;
@@ -18,10 +18,10 @@
     --primary: 146 49% 31%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 92 31% 90%;
+    --secondary: 101 34% 87%;
     --secondary-foreground: 149 30% 19%;
 
-    --muted: 106 25% 92%;
+    --muted: 108 30% 89%;
     --muted-foreground: 157 12% 35%;
 
     --accent: 24 56% 42%;
@@ -30,8 +30,8 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 102 19% 82%;
-    --input: 102 21% 86%;
+    --border: 108 22% 78%;
+    --input: 108 24% 84%;
     --ring: 146 49% 31%;
 
     --radius: 0.5rem;
@@ -89,13 +89,49 @@
   body {
     @apply bg-background text-foreground antialiased;
     background-image:
-      radial-gradient(circle at 8% 6%, rgba(116, 163, 127, 0.22), transparent 34%),
-      radial-gradient(circle at 92% 10%, rgba(214, 169, 109, 0.18), transparent 32%),
-      radial-gradient(circle at 50% 100%, rgba(69, 111, 83, 0.12), transparent 38%),
-      linear-gradient(160deg, rgba(250, 253, 248, 0.98), rgba(235, 246, 236, 0.96));
+      radial-gradient(circle at 10% 8%, rgba(78, 161, 96, 0.28), transparent 35%),
+      radial-gradient(circle at 88% 12%, rgba(212, 169, 98, 0.2), transparent 30%),
+      radial-gradient(circle at 50% 100%, rgba(59, 115, 73, 0.2), transparent 44%),
+      linear-gradient(155deg, rgba(246, 254, 246, 0.98), rgba(224, 243, 225, 0.97));
+    background-size: 120% 120%;
     background-attachment: fixed;
     font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
     letter-spacing: -0.008em;
+    overflow-x: hidden;
+    animation: page-ambient-shift 18s ease-in-out infinite alternate;
+    position: relative;
+    isolation: isolate;
+  }
+
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    inset: auto;
+    pointer-events: none;
+    z-index: -1;
+    border-radius: 9999px;
+    filter: blur(56px);
+    opacity: 0.48;
+    will-change: transform;
+  }
+
+  body::before {
+    width: min(48vw, 560px);
+    height: min(48vw, 560px);
+    top: -14vh;
+    left: -8vw;
+    background: radial-gradient(circle at 45% 45%, rgba(74, 160, 92, 0.65), rgba(74, 160, 92, 0));
+    animation: ambient-float-a 14s ease-in-out infinite alternate;
+  }
+
+  body::after {
+    width: min(42vw, 500px);
+    height: min(42vw, 500px);
+    right: -10vw;
+    bottom: -18vh;
+    background: radial-gradient(circle at 50% 50%, rgba(206, 162, 98, 0.45), rgba(206, 162, 98, 0));
+    animation: ambient-float-b 16s ease-in-out infinite alternate;
   }
 
   h1,
@@ -156,6 +192,33 @@
     }
   }
 
+  @keyframes page-ambient-shift {
+    0% {
+      background-position: 0% 0%;
+    }
+    100% {
+      background-position: 100% 100%;
+    }
+  }
+
+  @keyframes ambient-float-a {
+    0% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    100% {
+      transform: translate3d(40px, 26px, 0) scale(1.08);
+    }
+  }
+
+  @keyframes ambient-float-b {
+    0% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    100% {
+      transform: translate3d(-36px, -22px, 0) scale(1.1);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -191,7 +254,7 @@
     font-variant-numeric: tabular-nums;
   }
   .surface-panel {
-    background: rgba(250, 255, 249, 0.72);
+    background: rgba(245, 255, 244, 0.8);
     backdrop-filter: blur(18px);
   }
   .hero-glow {
