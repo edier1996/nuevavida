@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TransactionProvider } from "@/contexts/TransactionContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { AnimatePresence, motion } from "framer-motion";
 import Index from "./pages/Index.tsx";
 import Explore from "./pages/Explore.tsx";
 import Login from "./pages/Login.tsx";
@@ -37,48 +38,66 @@ import VerifyEmail from "./pages/VerifyEmail.tsx";
 
 const queryClient = new QueryClient();
 
+const AppRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        className="page-transition-shell"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <Routes location={location}>
+          <Route path="/" element={<Index />} />
+          <Route path="/explorar" element={<Explore />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/publicar" element={<Publish />} />
+          <Route path="/favoritos" element={<Favorites />} />
+          <Route path="/mensajes" element={<Messages />} />
+          <Route path="/perfil" element={<Profile />} />
+          <Route path="/producto/:id" element={<ProductDetail />} />
+          <Route path="/checkout/:id" element={<Checkout />} />
+          <Route path="/carrito" element={<Cart />} />
+          <Route path="/checkout-carrito" element={<CheckoutCart />} />
+          <Route path="/mis-compras" element={<MyPurchases />} />
+          <Route path="/mis-solicitudes" element={<MyRequests />} />
+          <Route path="/order-confirmation/:id" element={<OrderConfirmation />} />
+          <Route path="/dashboard" element={<SellerDashboard />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/worker" element={<WorkerDashboard />} />
+          <Route path="/categorias" element={<Categories />} />
+          <Route path="/sobre" element={<About />} />
+          <Route path="/contacto" element={<Contact />} />
+          <Route path="/transparencia" element={<Transparency />} />
+          <Route path="/privacidad" element={<Privacy />} />
+          <Route path="/terminos" element={<Terms />} />
+          <Route path="/cookies" element={<Cookies />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TransactionProvider>
         <CartProvider>
-        <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/explorar" element={<Explore />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/publicar" element={<Publish />} />
-            <Route path="/favoritos" element={<Favorites />} />
-            <Route path="/mensajes" element={<Messages />} />
-            <Route path="/perfil" element={<Profile />} />
-            <Route path="/producto/:id" element={<ProductDetail />} />
-            <Route path="/checkout/:id" element={<Checkout />} />
-            <Route path="/carrito" element={<Cart />} />
-            <Route path="/checkout-carrito" element={<CheckoutCart />} />
-            <Route path="/mis-compras" element={<MyPurchases />} />
-            <Route path="/mis-solicitudes" element={<MyRequests />} />
-            <Route path="/order-confirmation/:id" element={<OrderConfirmation />} />
-            <Route path="/dashboard" element={<SellerDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/worker" element={<WorkerDashboard />} />
-            <Route path="/categorias" element={<Categories />} />
-            <Route path="/sobre" element={<About />} />
-            <Route path="/contacto" element={<Contact />} />
-            <Route path="/transparencia" element={<Transparency />} />
-            <Route path="/privacidad" element={<Privacy />} />
-            <Route path="/terminos" element={<Terms />} />
-            <Route path="/cookies" element={<Cookies />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-        </TooltipProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </TooltipProvider>
         </CartProvider>
       </TransactionProvider>
     </AuthProvider>
