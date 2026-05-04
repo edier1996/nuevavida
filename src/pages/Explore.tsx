@@ -48,6 +48,10 @@ const Explore = () => {
       // Solo productos activos y no vendidos
       if (p.status !== "active" || p.sold) return false;
 
+      // Ocultar productos entregados o cerrados (en proceso de entrega)
+      const donationStatus = p.donationStatus || "disponible";
+      if (donationStatus !== "disponible") return false;
+
       // Búsqueda por texto
       if (searchQuery) {
         const query = searchQuery.toLowerCase();

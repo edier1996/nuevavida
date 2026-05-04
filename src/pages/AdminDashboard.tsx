@@ -12,6 +12,7 @@ import logo from "@/assets/logo.jpeg";
 import { Link } from "react-router-dom";
 import { getRequests, updateRequestStatus, type ProductRequest } from "@/lib/requests";
 import { deleteAdminUserFromDatabase, fetchAdminUserStats, fetchAdminUsers, type AdminUserRecord } from "@/lib/user-api";
+import { updateProduct } from "@/lib/products-api";
 
 const AdminDashboard = () => {
   const { user, createUser } = useAuth();
@@ -170,8 +171,16 @@ const AdminDashboard = () => {
 
   const handleSelectRequest = async (id: string) => {
     try {
+      const req = requests.find((r) => r.id === id);
       const updated = await updateRequestStatus(id, "selected");
       setRequests(updated);
+      if (req?.productId) {
+        try {
+          await updateProduct(req.productId, { donationStatus: "en_proceso" });
+        } catch {
+          // No bloquear el flujo si falla la actualización del producto
+        }
+      }
       toast({
         title: "Beneficiario seleccionado",
         description: "Se bloquearon nuevas solicitudes y el producto quedó en proceso de entrega.",
@@ -190,11 +199,19 @@ const AdminDashboard = () => {
 
   const handleMarkDelivered = async (id: string) => {
     try {
+      const req = requests.find((r) => r.id === id);
       const updated = await updateRequestStatus(id, "delivered");
       setRequests(updated);
+      if (req?.productId) {
+        try {
+          await updateProduct(req.productId, { donationStatus: "entregado", sold: true });
+        } catch {
+          // No bloquear el flujo si falla la actualización del producto
+        }
+      }
       toast({
         title: "Entrega cerrada",
-        description: "El producto quedó marcado como entregado y se guardó en el historial.",
+        description: "El producto quedó marcado como entregado y se quitó de la página principal.",
       });
     } catch (err) {
       toast({
