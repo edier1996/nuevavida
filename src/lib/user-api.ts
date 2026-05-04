@@ -33,6 +33,14 @@ export const resolveUserApiBaseUrl = () => {
 
 const API_BASE_URL = resolveUserApiBaseUrl();
 
+const getAuthHeaders = (): HeadersInit => {
+  const token = localStorage.getItem("auth_token");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
 export const createUserInDatabase = async (
   name: string,
   email: string,
@@ -77,5 +85,101 @@ export const createUserInDatabase = async (
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
     };
+  }
+};
+
+export interface AdminUserRecord {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+  role: 'user' | 'admin' | 'worker';
+}
+
+export const fetchAdminUsers = async (): Promise<{ users: AdminUserRecord[]; totalUsers: number }> => {
+  const response = await fetch(`${API_BASE_URL}/api/users/admin/users`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || `Error ${response.status}`);
+  }
+
+  return response.json();
+};
+
+export const fetchAdminUserStats = async (): Promise<{
+  totalUsers: number;
+  totalByRole: { admin: number; worker: number; user: number };
+}> => {
+  const response = await fetch(`${API_BASE_URL}/api/users/admin/stats`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || `Error ${response.status}`);
+  }
+
+  return response.json();
+};
+
+export const createAdminUserInDatabase = async (
+  name: string,
+  email: string,
+  password: string,
+  phone?: string,
+  city?: string,
+  address?: string,
+  role?: 'user' | 'admin' | 'worker'
+): Promise<{ success: boolean; userId?: string; error?: string }> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/users/admin/users`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        phone,
+        city,
+        address,
+        role: role || 'user',
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: error.error || `Error ${response.status}`,
+      };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      userId: String(data.user?.id || ""),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};
+
+export const deleteAdminUserFromDatabase = async (userId: string): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || `Error ${response.status}`);
   }
 };

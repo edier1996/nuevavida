@@ -3,6 +3,7 @@ const dotenv = require("dotenv")
 const cors = require("cors")
 const { sequelize, User, TempRegistration } = require('./db')
 const userRoutes = require("./routes/user")
+const notificationRoutes = require("./routes/notifications")
 const { sendPasswordResetEmail, sendVerificationEmail } = require('./config/email')
 
 const PORT = process.env.PORT || 5000
@@ -52,6 +53,7 @@ app.use((req, res, next) => {
 
 // routes - AFTER middleware
 app.use("/api/users", userRoutes)
+app.use("/api/notifications", notificationRoutes)
 
 app.get('/api/users/health', (_req, res) => {
   if (dbReady) {
@@ -93,7 +95,7 @@ const initializeDatabase = async () => {
   try {
     await sequelize.authenticate()
     console.log('✅ User Service is Connected to MySQL')
-    await sequelize.sync()
+    await sequelize.sync({ alter: true })
     console.log('Database synchronized')
     await initAdmin()
     dbReady = true

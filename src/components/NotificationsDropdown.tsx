@@ -6,6 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  deleteNotificationById,
+  fetchNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+  syncNotification,
+  type NotificationItem,
+} from "@/lib/notification-api";
+import { fetchConversations, fetchConversationMessages } from "@/lib/messaging-api";
 
 export interface Notification {
   id: string;
@@ -18,81 +27,114 @@ export interface Notification {
   metadata?: any;
 }
 
+const toUiNotification = (item: NotificationItem): Notification => ({
+  id: item.id,
+  type: item.type === "message" || item.type === "favorite" || item.type === "sale" ? item.type : "system",
+  title: item.title,
+  message: item.message,
+  read: item.read,
+  createdAt: item.createdAt,
+  actionUrl: item.actionUrl || undefined,
+  metadata: item.metadata,
+});
+
 const NotificationsDropdown = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !localStorage.getItem("auth_token")) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
 
-    // Cargar notificaciones del localStorage
-    const storageKey = `notifications_${user.id}`;
-    const stored = JSON.parse(localStorage.getItem(storageKey) || "[]");
-    setNotifications(stored);
-    setUnreadCount(stored.filter((n: Notification) => !n.read).length);
+    let cancelled = false;
 
-    // Escuchar cambios en mensajes para crear notificaciones
-    const checkForNewMessages = () => {
-      const messages = JSON.parse(localStorage.getItem("messages") || "[]");
-      const userMessages = messages.filter((msg: any) =>
-        (msg.to === user.id || msg.to === user.email) && !msg.read
-      );
-
-      userMessages.forEach((msg: any) => {
-        const existingNotification = stored.find((n: Notification) =>
-          n.type === "message" && n.metadata?.messageId === msg.id
-        );
-
-        if (!existingNotification) {
-          const newNotification: Notification = {
-            id: `msg_${msg.id}`,
-            type: "message",
-            title: "Nuevo mensaje",
-            message: `Tienes un mensaje sobre "${msg.subject}"`,
-            read: false,
-            createdAt: new Date().toISOString(),
-            actionUrl: "/mensajes",
-            metadata: { messageId: msg.id, from: msg.from }
-          };
-
-          stored.unshift(newNotification);
-          setNotifications([...stored]);
-          setUnreadCount(prev => prev + 1);
-        }
-      });
-
-      localStorage.setItem(storageKey, JSON.stringify(stored));
+    const loadNotifications = async () => {
+      try {
+        const data = await fetchNotifications(user.id);
+        if (cancelled) return;
+        const parsed = data.map(toUiNotification);
+        setNotifications(parsed);
+        setUnreadCount(parsed.filter((item) => !item.read).length);
+      } catch {
+        if (cancelled) return;
+        setNotifications([]);
+        setUnreadCount(0);
+      }
     };
 
-    // Verificar mensajes cada 30 segundos
-    const interval = setInterval(checkForNewMessages, 30000);
-    checkForNewMessages(); // Verificar inmediatamente
+    const syncUnreadMessages = async () => {
+      try {
+        const conversations = await fetchConversations(user.id);
+        const bundles = await Promise.all(
+          conversations.map((conversation) =>
+            fetchConversationMessages(conversation.id).catch(() => ({ messages: [] }))
+          )
+        );
 
-    return () => clearInterval(interval);
+        const unreadIncomingMessages = bundles.flatMap((bundle) => {
+          const list = Array.isArray(bundle.messages) ? bundle.messages : [];
+          return list.filter((message) => message.senderId !== user.id && !message.read);
+        });
+
+        await Promise.all(
+          unreadIncomingMessages.map((message) =>
+            syncNotification({
+              userId: user.id,
+              type: "message",
+              title: "Nuevo mensaje",
+              message: `${message.senderName || "Tienes"} te envió un nuevo mensaje.`,
+              actionUrl: "/mensajes",
+              externalKey: `message-${message.id}`,
+              metadata: {
+                conversationId: message.conversationId,
+                messageId: message.id,
+                senderId: message.senderId,
+              },
+            }).catch(() => null)
+          )
+        );
+      } finally {
+        await loadNotifications();
+      }
+    };
+
+    void syncUnreadMessages();
+    const interval = setInterval(() => {
+      void syncUnreadMessages();
+    }, 15000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [user]);
 
-  const markAsRead = (notificationId: string) => {
-    const updated = notifications.map(n =>
+  const markAsRead = async (notificationId: string) => {
+    await markNotificationAsRead(notificationId);
+    const updated = notifications.map((n) =>
       n.id === notificationId ? { ...n, read: true } : n
     );
     setNotifications(updated);
-    setUnreadCount(updated.filter(n => !n.read).length);
-    if (user) localStorage.setItem(`notifications_${user.id}`, JSON.stringify(updated));
+    setUnreadCount(updated.filter((n) => !n.read).length);
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    if (!user) return;
+    await markAllNotificationsAsRead(user.id);
     const updated = notifications.map(n => ({ ...n, read: true }));
     setNotifications(updated);
     setUnreadCount(0);
-    if (user) localStorage.setItem(`notifications_${user.id}`, JSON.stringify(updated));
   };
 
-  const deleteNotification = (notificationId: string) => {
+  const deleteNotification = async (notificationId: string) => {
+    await deleteNotificationById(notificationId);
     const updated = notifications.filter(n => n.id !== notificationId);
     setNotifications(updated);
     setUnreadCount(updated.filter(n => !n.read).length);
-    if (user) localStorage.setItem(`notifications_${user.id}`, JSON.stringify(updated));
   };
 
   const getNotificationIcon = (type: string) => {
@@ -155,8 +197,8 @@ const NotificationsDropdown = () => {
                           ? "border-l-primary bg-primary/5"
                           : "border-l-transparent"
                       }`}
-                      onClick={() => {
-                        if (!notification.read) markAsRead(notification.id);
+                      onClick={async () => {
+                        if (!notification.read) await markAsRead(notification.id);
                         if (notification.actionUrl) {
                           window.location.href = notification.actionUrl;
                         }
@@ -174,9 +216,9 @@ const NotificationsDropdown = () => {
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              deleteNotification(notification.id);
+                              await deleteNotification(notification.id);
                             }}
                           >
                             <X className="h-3 w-3" />

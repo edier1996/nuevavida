@@ -1,5 +1,5 @@
 const express = require("express")
-const { User, TempRegistration } = require("../db")
+const { User, TempRegistration, Notification } = require("../db")
 const argon2 = require("argon2")
 const jwt = require("jsonwebtoken")
 const crypto = require("crypto")
@@ -32,6 +32,19 @@ const auth = (req, res, next) => {
     next()
   } catch (err) {
     res.status(401).json({ msg: "Token is not valid" })
+  }
+}
+
+const adminOnly = async (req, res, next) => {
+  try {
+    const adminUser = await User.findByPk(req.user)
+    if (!adminUser || adminUser.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' })
+    }
+    req.adminUser = adminUser
+    next()
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'Server error' })
   }
 }
 
@@ -109,6 +122,18 @@ const completeRegistrationFromTemp = async (tempReg) => {
   }
 
   await tempReg.destroy()
+
+  await Notification.findOrCreate({
+    where: { externalKey: `welcome-${user.id}` },
+    defaults: {
+      userId: user.id,
+      type: 'system',
+      title: 'Bienvenido a Nueva Vida',
+      message: `Hola ${user.name}, tu cuenta ya está activa. Ahora puedes explorar, solicitar y compartir ayudas dentro de la comunidad.`,
+      actionUrl: '/dashboard',
+      metadata: { source: 'registration' },
+    },
+  })
 
   return {
     user,
@@ -229,6 +254,115 @@ router.post("/login", async (req, res) => {
     })
   } catch (error) {
     res.status(500).json({ error: error.message })
+  }
+})
+
+router.get('/admin/users', auth, adminOnly, async (_req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: { exclude: ['password'] },
+      order: [['createdAt', 'DESC']],
+    })
+
+    res.json({
+      users,
+      totalUsers: users.length,
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Server error' })
+  }
+})
+
+router.get('/admin/stats', auth, adminOnly, async (_req, res) => {
+  try {
+    const totalUsers = await User.count()
+    const totalByRole = {
+      admin: await User.count({ where: { role: 'admin' } }),
+      worker: await User.count({ where: { role: 'worker' } }),
+      user: await User.count({ where: { role: 'user' } }),
+    }
+
+    res.json({ totalUsers, totalByRole })
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Server error' })
+  }
+})
+
+router.post('/admin/users', auth, adminOnly, async (req, res) => {
+  try {
+    const { name, email, password, phone, city, address, role } = req.body || {}
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required' })
+    }
+
+    const existingUser = await User.findOne({ where: { email } })
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered' })
+    }
+
+    const newUser = await User.create({
+      name,
+      email,
+      password,
+      phone: phone || null,
+      city: city || null,
+      address: address || null,
+      role: role === 'admin' || role === 'worker' ? role : 'user',
+      isEmailVerified: true,
+      emailVerificationCode: null,
+      emailVerificationCodeExpiry: null,
+    })
+
+    await Notification.findOrCreate({
+      where: { externalKey: `admin-created-${newUser.id}` },
+      defaults: {
+        userId: newUser.id,
+        type: 'system',
+        title: 'Tu cuenta fue creada por el equipo',
+        message: `Hola ${newUser.name}, tu cuenta en Nueva Vida ya fue creada por administración y está lista para usarse.`,
+        actionUrl: '/perfil',
+        metadata: { source: 'admin-create' },
+      },
+    })
+
+    return res.status(201).json({
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone,
+        city: newUser.city,
+        address: newUser.address,
+        role: newUser.role,
+      },
+      totalUsers: await User.count(),
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Server error' })
+  }
+})
+
+router.delete('/admin/users/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const targetId = Number(req.params.id)
+    if (Number(req.user) === targetId) {
+      return res.status(400).json({ error: 'No puedes eliminar tu propio usuario administrador' })
+    }
+
+    const userToDelete = await User.findByPk(targetId)
+    if (!userToDelete) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    await userToDelete.destroy()
+
+    return res.json({
+      success: true,
+      totalUsers: await User.count(),
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Server error' })
   }
 })
 

@@ -7,20 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Users, UserPlus } from "lucide-react";
+import { Trash2, Users, UserPlus } from "lucide-react";
 import logo from "@/assets/logo.jpeg";
 import { Link } from "react-router-dom";
 import { getRequests, updateRequestStatus, type ProductRequest } from "@/lib/requests";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  city?: string;
-  address?: string;
-  role: 'admin' | 'worker' | 'user';
-}
+import { deleteAdminUserFromDatabase, fetchAdminUserStats, fetchAdminUsers, type AdminUserRecord } from "@/lib/user-api";
 
 const AdminDashboard = () => {
   const { user, createUser } = useAuth();
@@ -33,17 +24,36 @@ const AdminDashboard = () => {
     address: '',
     role: 'user' as 'admin' | 'worker' | 'user'
   });
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUserRecord[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [requests, setRequests] = useState<ProductRequest[]>([]);
 
   if (!user || user.role !== 'admin') {
     return <div>No tienes permisos para acceder a esta pÃ¡gina.</div>;
   }
 
-  // Cargar usuarios existentes desde localStorage
   useEffect(() => {
-    const storedUsers = JSON.parse(localStorage.getItem("users") || "[]");
-    setUsers(storedUsers);
+    const loadUsers = async () => {
+      try {
+        const [usersResponse, statsResponse] = await Promise.all([
+          fetchAdminUsers(),
+          fetchAdminUserStats(),
+        ]);
+        setUsers(usersResponse.users);
+        setTotalUsers(statsResponse.totalUsers);
+      } catch (err) {
+        toast({
+          title: "Error al cargar usuarios",
+          description:
+            err instanceof Error
+              ? err.message
+              : "No se pudieron cargar los usuarios reales desde la base de datos.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    void loadUsers();
   }, []);
 
   useEffect(() => {
@@ -86,9 +96,16 @@ const AdminDashboard = () => {
     );
 
     if (result.success) {
-      // Recargar lista
-      const storedUsers = JSON.parse(localStorage.getItem("users") || "[]");
-      setUsers(storedUsers);
+      try {
+        const [usersResponse, statsResponse] = await Promise.all([
+          fetchAdminUsers(),
+          fetchAdminUserStats(),
+        ]);
+        setUsers(usersResponse.users);
+        setTotalUsers(statsResponse.totalUsers);
+      } catch {
+        // noop: el usuario ya fue creado, la recarga se puede intentar luego.
+      }
 
       toast({
         title: "Usuario creado",
@@ -123,6 +140,29 @@ const AdminDashboard = () => {
       toast({
         title: "Error",
         description,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await deleteAdminUserFromDatabase(userId);
+      const [usersResponse, statsResponse] = await Promise.all([
+        fetchAdminUsers(),
+        fetchAdminUserStats(),
+      ]);
+      setUsers(usersResponse.users);
+      setTotalUsers(statsResponse.totalUsers);
+      toast({
+        title: "Usuario eliminado",
+        description: "El total de usuarios fue recalculado con la base de datos actual.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al eliminar usuario",
+        description:
+          err instanceof Error ? err.message : "No se pudo eliminar el usuario.",
         variant: "destructive",
       });
     }
@@ -283,6 +323,9 @@ const AdminDashboard = () => {
               <Users className="h-5 w-5" />
               GestiÃ³n de Usuarios
             </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Total actual en base de datos: <span className="font-semibold text-foreground">{totalUsers}</span>
+            </p>
           </CardHeader>
           <CardContent className="space-y-3">
             {users.length === 0 ? (
@@ -297,6 +340,7 @@ const AdminDashboard = () => {
                       <th className="py-2 pr-3">Rol</th>
                       <th className="py-2 pr-3">TelÃ©fono</th>
                       <th className="py-2 pr-3">Ciudad</th>
+                      <th className="py-2 pr-3 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -307,6 +351,17 @@ const AdminDashboard = () => {
                         <td className="py-2 pr-3 capitalize">{u.role}</td>
                         <td className="py-2 pr-3">{u.phone || "â€”"}</td>
                         <td className="py-2 pr-3">{u.city || "â€”"}</td>
+                        <td className="py-2 pr-3 text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteUser(u.id)}
+                            disabled={u.id === user.id}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

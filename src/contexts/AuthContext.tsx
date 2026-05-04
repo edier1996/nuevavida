@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { createUserInDatabase, resolveUserApiBaseUrl } from "@/lib/user-api";
+import { createAdminUserInDatabase, createUserInDatabase, resolveUserApiBaseUrl } from "@/lib/user-api";
 
 interface User {
   id: string;
@@ -148,27 +148,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const login = async (email: string, password: string): Promise<{ success: boolean; emailNotVerified?: boolean }> => {
-    // Login local para cuentas internas (admin/worker)
-    const users: StoredUser[] = JSON.parse(localStorage.getItem("users") || "[]");
-    const hashedPassword = await hashPassword(password);
-
-    const foundUser = users.find((u: StoredUser) => {
-      if (u.email !== email) return false;
-      // Compatibilidad hacia atrás: algunos usuarios pueden tener contraseña en texto plano
-      if (u.passwordHash) {
-        return u.passwordHash === hashedPassword;
-      }
-      return u.password === password;
-    });
-
-    if (foundUser && (foundUser.role === "admin" || foundUser.role === "worker")) {
-      const { password, passwordHash, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem("user", JSON.stringify(userWithoutPassword));
-      return { success: true };
-    }
-
-    // Login SQL para usuarios finales
     try {
       const response = await fetch(`${API_BASE_URL}/api/users/login`, {
         method: "POST",
@@ -214,6 +193,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       localStorage.setItem("user", JSON.stringify(mergedUser));
       return { success: true };
     } catch {
+      const users: StoredUser[] = JSON.parse(localStorage.getItem("users") || "[]");
+      const hashedPassword = await hashPassword(password);
+
+      const foundUser = users.find((u: StoredUser) => {
+        if (u.email !== email) return false;
+        if (u.passwordHash) {
+          return u.passwordHash === hashedPassword;
+        }
+        return u.password === password;
+      });
+
+      if (foundUser && (foundUser.role === "admin" || foundUser.role === "worker")) {
+        const { password: plainPassword, passwordHash, ...userWithoutPassword } = foundUser;
+        void plainPassword;
+        void passwordHash;
+        setUser(userWithoutPassword);
+        localStorage.setItem("user", JSON.stringify(userWithoutPassword));
+        return { success: true };
+      }
+
       return { success: false };
     }
   };
@@ -351,7 +350,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     // Save to the database first so the user persists across devices and cache clears.
-    const dbResult = await createUserInDatabase(name, email, password, phone, city, address, role);
+    const dbResult = await createAdminUserInDatabase(name, email, password, phone, city, address, role);
     if (!dbResult.success) {
       return { success: false, error: dbResult.error };
     }
