@@ -60,20 +60,6 @@ const Header = () => {
           </div>
         </Link>
 
-        {/* Desktop Search */}
-        <form onSubmit={handleSearch} className="hidden max-w-xl flex-1 px-4 lg:block">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={2.5} />
-            <input
-              type="text"
-              placeholder="Busca muebles, ropa, tecnologia o ayudas disponibles"
-              className="w-full rounded-full border border-border/80 bg-white/80 py-3 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </div>
-        </form>
-
         {/* Desktop Nav */}
         <nav className="hidden items-center gap-1 md:flex">
           <Link to="/explorar">
