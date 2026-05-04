@@ -41,6 +41,11 @@ const Explore = () => {
     if (categoryQuery) {
       setSelectedCategory((categoryQuery as Category) ?? "all");
     }
+
+    const qParam = searchParams.get("q");
+    if (qParam) {
+      setSearchQuery(qParam);
+    }
   }, [searchParams]);
 
   const filteredAndSorted = useMemo(() => {

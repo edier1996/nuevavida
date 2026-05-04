@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Search, Plus, Menu, X, Heart, MessageCircle, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,16 @@ import { fetchConversations, fetchConversationMessages } from "@/lib/messaging-a
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
   const { user, logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchInput.trim();
+    navigate(q ? `/explorar?q=${encodeURIComponent(q)}` : "/explorar");
+    setMobileMenuOpen(false);
+  };
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;
@@ -52,16 +61,18 @@ const Header = () => {
         </Link>
 
         {/* Desktop Search */}
-        <div className="hidden max-w-xl flex-1 px-4 lg:block">
+        <form onSubmit={handleSearch} className="hidden max-w-xl flex-1 px-4 lg:block">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={2.5} />
             <input
               type="text"
               placeholder="Busca muebles, ropa, tecnologia o ayudas disponibles"
               className="w-full rounded-full border border-border/80 bg-white/80 py-3 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
-        </div>
+        </form>
 
         {/* Desktop Nav */}
         <nav className="hidden items-center gap-1 md:flex">
@@ -164,14 +175,18 @@ const Header = () => {
             className="overflow-hidden border-t border-border/70 bg-background/90 md:hidden"
           >
             <div className="container mx-auto space-y-3 px-4 pb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={2.5} />
-                <input
-                  type="text"
-                  placeholder="Buscar productos..."
-                  className="w-full rounded-full border border-border/80 bg-white/80 py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
+              <form onSubmit={handleSearch}>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" strokeWidth={2.5} />
+                  <input
+                    type="text"
+                    placeholder="Buscar productos..."
+                    className="w-full rounded-full border border-border/80 bg-white/80 py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                  />
+                </div>
+              </form>
               <div className="flex flex-col gap-1">
                 <Link to="/explorar" className="rounded-2xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-white/80 hover:text-foreground">Explorar</Link>
                 {isAuthenticated && (
