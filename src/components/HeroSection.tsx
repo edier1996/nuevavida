@@ -3,8 +3,25 @@ import { ArrowRight, Recycle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import heroImage from "@/assets/hero-community.png";
+import { useAuth } from "@/contexts/AuthContext";
 
 const HeroSection = () => {
+  const { user, isAuthenticated } = useAuth();
+  const firstName = user?.name?.trim()?.split(/\s+/)?.[0] || "";
+  const currentHour = new Date().getHours();
+
+  const dayGreeting =
+    currentHour < 12
+      ? "Buenos dias"
+      : currentHour < 19
+        ? "Buenas tardes"
+        : "Buenas noches";
+
+  const heroTitle =
+    isAuthenticated && firstName
+      ? `${dayGreeting}, ${firstName}. Lo que ya no usas puede convertirse en alivio para otra familia.`
+      : "Lo que ya no usas puede convertirse en alivio para otra familia.";
+
   return (
     <section className="relative overflow-hidden px-4 pt-8 md:pt-10">
       <div className="pointer-events-none absolute left-0 top-0 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
@@ -21,10 +38,10 @@ const HeroSection = () => {
             <Recycle className="h-4 w-4" strokeWidth={2.5} />
             Plataforma solidaria Nueva Vida
           </div>
-          <h1 className="text-4xl leading-[0.95] text-foreground text-balance md:text-6xl">
-            Lo que ya no usas puede convertirse en alivio para otra familia.
+          <h1 className="text-4xl font-semibold leading-[0.96] text-foreground text-balance md:text-[3.75rem]">
+            {heroTitle}
           </h1>
-          <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground text-pretty">
+          <p className="mt-6 max-w-2xl text-[1.08rem] leading-relaxed text-muted-foreground text-pretty md:text-xl md:leading-8">
             Publica objetos, recibe solicitudes con criterio social y entregalos a quien realmente los necesita. Sin ventas entre usuarios, con impacto real en la comunidad.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
