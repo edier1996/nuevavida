@@ -183,3 +183,58 @@ export const deleteAdminUserFromDatabase = async (userId: string): Promise<void>
     throw new Error(error.error || `Error ${response.status}`);
   }
 };
+
+export interface ProfileUpdatePayload {
+  name?: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+}
+
+export const updateUserProfile = async (
+  userId: string,
+  updates: ProfileUpdatePayload
+): Promise<{ success: boolean; user?: { id: string; name: string; email: string; phone?: string; city?: string; address?: string; role: string }; error?: string }> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(userId)}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      return { success: false, error: error.error || `Error ${response.status}` };
+    }
+
+    const data = await response.json();
+    return { success: true, user: data.user || data };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+  }
+};
+
+export const fetchUserFavorites = async (userId: string): Promise<string[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(userId)}/favorites`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data.favorites) ? data.favorites : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveUserFavorites = async (userId: string, favorites: string[]): Promise<void> => {
+  try {
+    await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(userId)}/favorites`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ favorites }),
+    });
+  } catch {
+    // silently fail
+  }
+};

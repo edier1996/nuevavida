@@ -9,7 +9,11 @@ import logo from "@/assets/logo.jpeg";
 const Profile = () => {
   const [allProducts, setAllProducts] = useState<Product[]>(mockProducts);
   const [userProducts, setUserProducts] = useState<Product[]>([]);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, updateUser } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", city: "", address: "" });
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -29,6 +33,32 @@ const Profile = () => {
 
     loadProducts();
   }, [user]);
+
+  void allProducts;
+
+  const openEdit = () => {
+    setEditForm({
+      name: user?.name || "",
+      phone: user?.phone || "",
+      city: user?.city || "",
+      address: user?.address || "",
+    });
+    setEditError("");
+    setIsEditing(true);
+  };
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditLoading(true);
+    setEditError("");
+    const result = await updateUser(editForm);
+    setEditLoading(false);
+    if (result.success) {
+      setIsEditing(false);
+    } else {
+      setEditError(result.error || "Error al guardar los cambios");
+    }
+  };
 
   const soldProducts = useMemo(() => {
     return userProducts.filter(product => product.sold);
@@ -68,12 +98,12 @@ const Profile = () => {
                     <img src={logo} alt="Avatar" className="h-full w-full object-cover" />
                   </div>
                   <div className="absolute -bottom-2 right-0">
-                    <Link
-                      to="/perfil"
+                    <button
+                      onClick={openEdit}
                       className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-foreground shadow-sm hover:bg-gray-100"
                     >
                       Editar perfil
-                    </Link>
+                    </button>
                   </div>
                 </div>
                 <div>
@@ -120,7 +150,71 @@ const Profile = () => {
 
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="rounded-2xl border border-secondary bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-foreground">Información</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Información</h2>
+                {!isEditing && (
+                  <button onClick={openEdit} className="text-xs text-primary hover:underline">Editar</button>
+                )}
+              </div>
+
+              {isEditing ? (
+                <form onSubmit={handleEditSave} className="mt-4 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Nombre</label>
+                    <input
+                      type="text"
+                      value={editForm.name}
+                      onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Teléfono</label>
+                    <input
+                      type="tel"
+                      value={editForm.phone}
+                      onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Ciudad</label>
+                    <input
+                      type="text"
+                      value={editForm.city}
+                      onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Dirección</label>
+                    <input
+                      type="text"
+                      value={editForm.address}
+                      onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  {editError && <p className="text-xs text-red-500">{editError}</p>}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={editLoading}
+                      className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                    >
+                      {editLoading ? "Guardando..." : "Guardar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(false)}
+                      className="flex-1 rounded-lg bg-secondary px-3 py-2 text-sm font-semibold text-foreground hover:bg-secondary/80"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              ) : (
               <div className="mt-4 space-y-3 text-sm text-muted-foreground">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">Nombre</span>
@@ -149,6 +243,7 @@ const Profile = () => {
                   </div>
                 )}
               </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-secondary bg-white p-6 shadow-sm">

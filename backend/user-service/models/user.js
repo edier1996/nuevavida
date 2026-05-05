@@ -51,6 +51,18 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: true,
     },
+    favorites: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const raw = this.getDataValue('favorites');
+        try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+      },
+      set(val) {
+        this.setDataValue('favorites', JSON.stringify(val || []));
+      },
+    },
   }, {
     tableName: 'users',
     hooks: {

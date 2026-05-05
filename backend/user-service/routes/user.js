@@ -257,6 +257,65 @@ router.post("/login", async (req, res) => {
   }
 })
 
+// Favorites endpoints
+router.get('/:id/favorites', auth, async (req, res) => {
+  try {
+    const { id } = req.params
+    if (String(req.user) !== String(id)) {
+      return res.status(403).json({ error: 'No autorizado' })
+    }
+    const user = await User.findByPk(id, { attributes: ['id', 'favorites'] })
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' })
+    res.json({ favorites: user.favorites || [] })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+router.put('/:id/favorites', auth, async (req, res) => {
+  try {
+    const { id } = req.params
+    if (String(req.user) !== String(id)) {
+      return res.status(403).json({ error: 'No autorizado' })
+    }
+    const { favorites } = req.body
+    if (!Array.isArray(favorites)) return res.status(400).json({ error: 'favorites debe ser un array' })
+    await User.update({ favorites }, { where: { id } })
+    res.json({ favorites })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// Update own profile
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const { id } = req.params
+    // Only allow users to update their own profile (unless admin)
+    const adminUser = await User.findByPk(req.user)
+    if (String(req.user) !== String(id) && adminUser?.role !== 'admin') {
+      return res.status(403).json({ error: 'No tienes permiso para editar este perfil' })
+    }
+
+    const { name, phone, city, address } = req.body
+    const updates = {}
+    if (name !== undefined) updates.name = name
+    if (phone !== undefined) updates.phone = phone
+    if (city !== undefined) updates.city = city
+    if (address !== undefined) updates.address = address
+
+    const [count] = await User.update(updates, { where: { id } })
+    if (count === 0) return res.status(404).json({ error: 'Usuario no encontrado' })
+
+    const updated = await User.findByPk(id, {
+      attributes: ['id', 'name', 'email', 'phone', 'city', 'address', 'role'],
+    })
+    res.json({ user: updated })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 router.get('/admin/users', auth, adminOnly, async (_req, res) => {
   try {
     const users = await User.findAll({

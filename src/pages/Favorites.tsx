@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ProductCard from "@/components/ProductCard";
 import { mockProducts, type Product } from "@/lib/mock-data";
 import { fetchProducts } from "@/lib/products-api";
+import { fetchUserFavorites, saveUserFavorites } from "@/lib/user-api";
 import logo from "@/assets/logo.jpeg";
 
 const Favorites = () => {
@@ -28,8 +29,19 @@ const Favorites = () => {
       return;
     }
 
-    const favs = JSON.parse(localStorage.getItem(`favorites_${user.id}`) || "[]");
-    setFavorites(Array.isArray(favs) ? favs : []);
+    // Intentar cargar desde backend; fallback a localStorage
+    fetchUserFavorites(user.id).then(backendFavs => {
+      if (backendFavs.length > 0) {
+        setFavorites(backendFavs);
+      } else {
+        const localFavs = JSON.parse(localStorage.getItem(`favorites_${user.id}`) || "[]");
+        setFavorites(Array.isArray(localFavs) ? localFavs : []);
+        // Migrar localStorage al backend si hay favoritos locales
+        if (localFavs.length > 0) {
+          saveUserFavorites(user.id, localFavs);
+        }
+      }
+    });
   }, [isAuthenticated, user]);
 
   const favoriteProducts = useMemo(() => {

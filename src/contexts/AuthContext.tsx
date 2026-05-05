@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { createAdminUserInDatabase, createUserInDatabase, resolveUserApiBaseUrl } from "@/lib/user-api";
+import { createAdminUserInDatabase, createUserInDatabase, resolveUserApiBaseUrl, updateUserProfile, ProfileUpdatePayload } from "@/lib/user-api";
 
 interface User {
   id: string;
@@ -41,6 +41,7 @@ interface AuthContextType {
     address: string,
     role: 'admin' | 'worker' | 'user'
   ) => Promise<{ success: boolean; error?: string }>;
+  updateUser: (updates: ProfileUpdatePayload) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -380,6 +381,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return { success: true };
   };
 
+  const updateUser = async (updates: ProfileUpdatePayload): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'No autenticado' };
+    const result = await updateUserProfile(user.id, updates);
+    if (result.success && result.user) {
+      const merged: User = {
+        ...user,
+        name: result.user.name ?? user.name,
+        phone: result.user.phone ?? user.phone,
+        city: result.user.city ?? user.city,
+        address: result.user.address ?? user.address,
+      };
+      setUser(merged);
+      localStorage.setItem('user', JSON.stringify(merged));
+    }
+    return result.success ? { success: true } : { success: false, error: result.error };
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
@@ -394,6 +412,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     verifyEmail,
     verifyEmailToken,
     createUser,
+    updateUser,
     logout,
     isAuthenticated: !!user,
   };

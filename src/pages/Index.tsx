@@ -16,10 +16,12 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [allProducts, setAllProducts] = useState<Product[]>(mockProducts);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
   const [showFilters, setShowFilters] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem("onboarding_seen"));
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -28,6 +30,8 @@ const Index = () => {
         setAllProducts(remoteProducts);
       } catch {
         setAllProducts(mockProducts);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -90,6 +94,26 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-transparent">
       <Header />
+
+      {/* Onboarding banner */}
+      {showOnboarding && (
+        <div className="bg-primary text-primary-foreground px-4 py-3">
+          <div className="container mx-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-6 text-sm">
+              <span><strong>1.</strong> Registrate gratis</span>
+              <span><strong>2.</strong> Encuentra objetos disponibles cerca de ti</span>
+              <span><strong>3.</strong> Solicita y coordina el envio</span>
+            </div>
+            <button
+              onClick={() => { setShowOnboarding(false); localStorage.setItem("onboarding_seen", "1"); }}
+              className="self-end rounded-full bg-white/20 px-4 py-1.5 text-xs font-semibold hover:bg-white/30 sm:self-auto"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
       <HeroSection />
 
       {/* Products Section */}
@@ -186,13 +210,44 @@ const Index = () => {
 
           <CategoryFilter selected={selectedCategory} onSelect={setSelectedCategory} />
 
+          {/* Stats públicas */}
+          {!isLoading && (
+            <div className="mt-4 mb-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
+              <span className="rounded-full bg-primary/10 px-3 py-1 text-primary font-medium">
+                {filtered.length} {filtered.length === 1 ? "objeto disponible" : "objetos disponibles"}
+              </span>
+              {allProducts.filter(p => p.isGift && p.sold).length > 0 && (
+                <span className="rounded-full bg-green-100 px-3 py-1 text-green-700 font-medium">
+                  {allProducts.filter(p => p.isGift && p.sold).length} donaciones entregadas
+                </span>
+              )}
+              {[...new Set(filtered.map(p => p.city).filter(Boolean))].length > 1 && (
+                <span className="rounded-full bg-secondary px-3 py-1 font-medium">
+                  {[...new Set(filtered.map(p => p.city).filter(Boolean))].length} ciudades
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {filtered.map((product, i) => (
-              <ProductCard key={product.id} product={product} index={i} />
-            ))}
+            {isLoading
+              ? Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="rounded-2xl border border-border bg-card animate-pulse overflow-hidden">
+                    <div className="h-48 bg-muted" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                      <div className="h-3 bg-muted rounded w-2/3" />
+                    </div>
+                  </div>
+                ))
+              : filtered.map((product, i) => (
+                  <ProductCard key={product.id} product={product} index={i} />
+                ))
+            }
           </div>
 
-          {filtered.length === 0 && (
+          {!isLoading && filtered.length === 0 && (
             <div className="py-20 text-center">
               <p className="text-2xl text-foreground">No encontramos objetos con esos filtros.</p>
               <p className="mt-2 text-muted-foreground">Prueba otra ciudad, elimina una categoria o reinicia la busqueda.</p>
