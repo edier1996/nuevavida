@@ -6,48 +6,48 @@
 
 @layer base {
   :root {
-    --background: 123 31% 94%;
-    --foreground: 152 33% 13%;
+    --background: 200 38% 96%;
+    --foreground: 205 30% 16%;
 
-    --card: 110 38% 99%;
-    --card-foreground: 152 33% 13%;
+    --card: 200 42% 99%;
+    --card-foreground: 205 30% 16%;
 
-    --popover: 110 38% 99%;
-    --popover-foreground: 152 33% 13%;
+    --popover: 200 42% 99%;
+    --popover-foreground: 205 30% 16%;
 
-    --primary: 146 49% 31%;
+    --primary: 203 63% 36%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 101 34% 87%;
-    --secondary-foreground: 149 30% 19%;
+    --secondary: 190 30% 88%;
+    --secondary-foreground: 199 30% 21%;
 
-    --muted: 108 30% 89%;
-    --muted-foreground: 157 12% 35%;
+    --muted: 198 24% 90%;
+    --muted-foreground: 202 14% 38%;
 
-    --accent: 24 56% 42%;
+    --accent: 168 45% 36%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 108 22% 78%;
-    --input: 108 24% 84%;
-    --ring: 146 49% 31%;
+    --border: 198 22% 80%;
+    --input: 198 26% 86%;
+    --ring: 203 63% 36%;
 
     --radius: 0.5rem;
 
-    --shadow-card: 0 10px 30px rgba(33, 67, 47, 0.1), 0 1px 0 rgba(255, 255, 255, 0.82) inset;
-    --shadow-card-hover: 0 20px 44px rgba(33, 67, 47, 0.16), 0 1px 0 rgba(255, 255, 255, 0.92) inset;
-    --shadow-nav: 0 14px 36px rgba(33, 67, 47, 0.11);
+    --shadow-card: 0 10px 30px rgba(27, 66, 94, 0.1), 0 1px 0 rgba(255, 255, 255, 0.84) inset;
+    --shadow-card-hover: 0 20px 44px rgba(27, 66, 94, 0.16), 0 1px 0 rgba(255, 255, 255, 0.92) inset;
+    --shadow-nav: 0 14px 36px rgba(27, 66, 94, 0.12);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 142 76% 36%;
+    --sidebar-primary: 203 63% 36%;
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 142 76% 36%;
+    --sidebar-ring: 203 63% 36%;
   }
 
   .dark {
@@ -57,7 +57,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 8%;
     --popover-foreground: 210 40% 98%;
-    --primary: 142 76% 42%;
+    --primary: 203 72% 52%;
     --primary-foreground: 0 0% 100%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
@@ -69,15 +69,15 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 142 76% 42%;
+    --ring: 203 72% 52%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 142 76% 42%;
+    --sidebar-primary: 203 72% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 142 76% 42%;
+    --sidebar-ring: 203 72% 52%;
   }
 }
 
@@ -89,10 +89,10 @@
   body {
     @apply bg-background text-foreground antialiased;
     background-image:
-      radial-gradient(circle at 10% 8%, rgba(78, 161, 96, 0.28), transparent 35%),
-      radial-gradient(circle at 88% 12%, rgba(212, 169, 98, 0.2), transparent 30%),
-      radial-gradient(circle at 50% 100%, rgba(59, 115, 73, 0.2), transparent 44%),
-      linear-gradient(155deg, rgba(246, 254, 246, 0.98), rgba(224, 243, 225, 0.97));
+      radial-gradient(circle at 10% 8%, rgba(67, 143, 186, 0.26), transparent 35%),
+      radial-gradient(circle at 88% 12%, rgba(80, 167, 146, 0.18), transparent 30%),
+      radial-gradient(circle at 50% 100%, rgba(33, 103, 145, 0.2), transparent 44%),
+      linear-gradient(155deg, rgba(246, 252, 255, 0.99), rgba(229, 243, 249, 0.97));
     background-size: 120% 120%;
     background-attachment: fixed;
     font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -121,7 +121,7 @@
     height: min(48vw, 560px);
     top: -14vh;
     left: -8vw;
-    background: radial-gradient(circle at 45% 45%, rgba(74, 160, 92, 0.65), rgba(74, 160, 92, 0));
+    background: radial-gradient(circle at 45% 45%, rgba(63, 139, 181, 0.6), rgba(63, 139, 181, 0));
     animation: ambient-float-a 14s ease-in-out infinite alternate;
   }
 
@@ -130,7 +130,7 @@
     height: min(42vw, 500px);
     right: -10vw;
     bottom: -18vh;
-    background: radial-gradient(circle at 50% 50%, rgba(206, 162, 98, 0.45), rgba(206, 162, 98, 0));
+    background: radial-gradient(circle at 50% 50%, rgba(68, 155, 130, 0.44), rgba(68, 155, 130, 0));
     animation: ambient-float-b 16s ease-in-out infinite alternate;
   }
 
@@ -229,7 +229,7 @@
   }
 
   ::selection {
-    background: rgba(79, 121, 92, 0.2);
+    background: rgba(54, 122, 166, 0.24);
     color: hsl(var(--foreground));
   }
 }
@@ -254,10 +254,10 @@
     font-variant-numeric: tabular-nums;
   }
   .surface-panel {
-    background: rgba(245, 255, 244, 0.8);
+    background: rgba(247, 253, 255, 0.82);
     backdrop-filter: blur(18px);
   }
   .hero-glow {
-    box-shadow: 0 24px 60px rgba(34, 84, 53, 0.2);
+    box-shadow: 0 24px 60px rgba(31, 92, 132, 0.22);
   }
 }
