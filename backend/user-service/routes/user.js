@@ -464,16 +464,16 @@ router.post("/verify-email", async (req, res) => {
     // Check if it's a temp registration
     const tempReg = await TempRegistration.findOne({ where: { email } });
     if (!tempReg) {
-      return res.status(404).json({ error: "Registration not found. Please register again." });
+      return res.status(404).json({ error: "El registro expiró o no existe. Por favor regístrate de nuevo.", code: "REGISTRATION_EXPIRED" });
     }
 
     if (tempReg.verificationCode !== verificationCode) {
-      return res.status(400).json({ error: "Invalid verification code" });
+      return res.status(400).json({ error: "Código de verificación incorrecto" });
     }
 
     if (new Date() > tempReg.verificationCodeExpiry) {
       await tempReg.destroy();
-      return res.status(400).json({ error: "Verification code has expired. Please register again." });
+      return res.status(400).json({ error: "El código de verificación expiró. Por favor regístrate de nuevo.", code: "CODE_EXPIRED" });
     }
 
     const { user, token, alreadyVerified } = await completeRegistrationFromTemp(tempReg);
@@ -570,7 +570,7 @@ router.post("/resend-verification-code", async (req, res) => {
     // Check if it's a temp registration
     const tempReg = await TempRegistration.findOne({ where: { email } });
     if (!tempReg) {
-      return res.status(404).json({ error: "Registration not found. Please register again." });
+      return res.status(404).json({ error: "El registro expiró o no existe. Por favor regístrate de nuevo.", code: "REGISTRATION_EXPIRED" });
     }
 
     // Generate new verification code

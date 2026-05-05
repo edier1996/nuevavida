@@ -38,7 +38,7 @@ const HeroSection = () => {
             <Recycle className="h-4 w-4" strokeWidth={2.5} />
             Plataforma solidaria Nueva Vida
           </div>
-          <h1 className="text-4xl font-semibold leading-[0.96] text-foreground text-balance md:text-[3.75rem]">
+          <h1 className="text-xl font-semibold leading-[1.2] text-foreground text-balance md:text-[1.9rem]">
             {heroTitle}
           </h1>
           <p className="mt-6 max-w-2xl text-[1.08rem] leading-relaxed text-muted-foreground text-pretty md:text-xl md:leading-8">

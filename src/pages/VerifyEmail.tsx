@@ -123,6 +123,16 @@ const VerifyEmail = () => {
       const result = await verifyEmail(email, verificationCode);
 
       if (!result.success) {
+        // Si el registro expiró, redirigir al registro
+        if (result.error?.includes("expir") || result.error?.includes("no existe")) {
+          toast({
+            title: "Registro expirado",
+            description: "Tu registro expiró. Por favor regístrate de nuevo.",
+            variant: "destructive",
+          });
+          setTimeout(() => navigate("/register"), 2500);
+          return;
+        }
         throw new Error(result.error || "Error al verificar el email");
       }
 
