@@ -95,7 +95,7 @@ const initializeDatabase = async () => {
   try {
     await sequelize.authenticate()
     console.log('✅ User Service is Connected to MySQL')
-    await sequelize.sync({ alter: true })
+    await sequelize.sync()
     console.log('Database synchronized')
     await initAdmin()
     dbReady = true
