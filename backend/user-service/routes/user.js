@@ -136,17 +136,21 @@ const completeRegistrationFromTemp = async (tempReg) => {
 
   await tempReg.destroy()
 
-  await Notification.findOrCreate({
-    where: { externalKey: `welcome-${user.id}` },
-    defaults: {
-      userId: user.id,
-      type: 'system',
-      title: 'Bienvenido a Nueva Vida',
-      message: `Hola ${user.name}, tu cuenta ya está activa. Ahora puedes explorar, solicitar y compartir ayudas dentro de la comunidad.`,
-      actionUrl: '/dashboard',
-      metadata: { source: 'registration' },
-    },
-  })
+  try {
+    await Notification.findOrCreate({
+      where: { externalKey: `welcome-${user.id}` },
+      defaults: {
+        userId: user.id,
+        type: 'system',
+        title: 'Bienvenido a Nueva Vida',
+        message: `Hola ${user.name}, tu cuenta ya está activa. Ahora puedes explorar, solicitar y compartir ayudas dentro de la comunidad.`,
+        actionUrl: '/dashboard',
+        metadata: { source: 'registration' },
+      },
+    })
+  } catch (notifErr) {
+    console.error('⚠️ Could not create welcome notification (non-fatal):', notifErr.message)
+  }
 
   return {
     user,
@@ -379,17 +383,21 @@ router.post('/admin/users', auth, adminOnly, async (req, res) => {
       emailVerificationCodeExpiry: null,
     })
 
-    await Notification.findOrCreate({
-      where: { externalKey: `admin-created-${newUser.id}` },
-      defaults: {
-        userId: newUser.id,
-        type: 'system',
-        title: 'Tu cuenta fue creada por el equipo',
-        message: `Hola ${newUser.name}, tu cuenta en Nueva Vida ya fue creada por administración y está lista para usarse.`,
-        actionUrl: '/perfil',
-        metadata: { source: 'admin-create' },
-      },
-    })
+    try {
+      await Notification.findOrCreate({
+        where: { externalKey: `admin-created-${newUser.id}` },
+        defaults: {
+          userId: newUser.id,
+          type: 'system',
+          title: 'Tu cuenta fue creada por el equipo',
+          message: `Hola ${newUser.name}, tu cuenta en Nueva Vida ya fue creada por administración y está lista para usarse.`,
+          actionUrl: '/perfil',
+          metadata: { source: 'admin-create' },
+        },
+      })
+    } catch (notifErr) {
+      console.error('⚠️ Could not create admin notification (non-fatal):', notifErr.message)
+    }
 
     return res.status(201).json({
       user: {
