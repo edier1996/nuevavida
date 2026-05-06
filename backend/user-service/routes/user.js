@@ -11,6 +11,21 @@ const {
 const router = express.Router()
 const VERIFICATION_EXPIRY_MINUTES = Number(process.env.EMAIL_VERIFICATION_EXPIRES_MINUTES || 15)
 
+const getFriendlyMailError = (mailError) => {
+  const code = mailError?.code || ''
+  const message = String(mailError?.message || '').toLowerCase()
+
+  if (code === 'BREVO_IP_NOT_AUTHORIZED' || message.includes('brevo bloqueó la ip saliente')) {
+    return 'No pudimos enviar el correo por una restricción de IP en Brevo. Contacta al administrador.'
+  }
+
+  if (message.includes('timed out')) {
+    return 'El servicio de correo tardó demasiado en responder. Intenta nuevamente.'
+  }
+
+  return 'No se pudo enviar el correo de verificación. Intenta nuevamente.'
+}
+
 // Handle CORS preflight requests
 router.options('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -192,7 +207,7 @@ router.post("/register", async (req, res) => {
       emailSent = true;
       console.log(`✅ Verification email sent to ${email}`);
     } catch (mailError) {
-      emailError = mailError?.message || "Email delivery failed";
+      emailError = getFriendlyMailError(mailError);
       console.error(`❌ Failed to send verification email to ${email}:`, emailError);
       // Don't throw - we still want to return success
     }
@@ -589,7 +604,7 @@ router.post("/resend-verification-code", async (req, res) => {
       emailSent = true;
       console.log(`✅ Verification email resent to ${email}`);
     } catch (mailError) {
-      emailError = mailError?.message || "Email delivery failed";
+      emailError = getFriendlyMailError(mailError);
       console.error(`❌ Failed to resend verification email to ${email}:`, emailError);
       // Don't throw - we still want to return success
     }

@@ -43,7 +43,21 @@ const sendEmailViaBrevoAPI = async (to, subject, htmlContent) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve({ ok: true, messageId: res.headers['x-message-id'] });
         } else {
-          reject(new Error(`Brevo API error: ${res.statusCode} - ${data}`));
+          const rawPayload = String(data || '');
+          const lowerPayload = rawPayload.toLowerCase();
+          // Railway egress IPs can rotate; map Brevo whitelist failures to a stable app-level error.
+          if (
+            res.statusCode === 401 &&
+            (lowerPayload.includes('unrecognised ip address') || lowerPayload.includes('authorised_ips'))
+          ) {
+            const ipError = new Error('No se pudo enviar el correo porque Brevo bloqueó la IP saliente.');
+            ipError.code = 'BREVO_IP_NOT_AUTHORIZED';
+            return reject(ipError);
+          }
+
+          const genericError = new Error(`Brevo API error ${res.statusCode}`);
+          genericError.code = `BREVO_API_${res.statusCode}`;
+          return reject(genericError);
         }
       });
     });

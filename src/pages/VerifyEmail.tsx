@@ -158,6 +158,14 @@ const VerifyEmail = () => {
     const getFriendlyError = (error: unknown) => {
       if (!(error instanceof Error)) return "No se pudo reenviar el código";
       const msg = error.message.toLowerCase();
+      if (
+        msg.includes("brevo") ||
+        msg.includes("authorised_ips") ||
+        msg.includes("unrecognised ip address") ||
+        msg.includes("restricción de ip")
+      ) {
+        return "No se pudo enviar el correo por una restricción de IP en Brevo. El equipo ya puede corregirlo en Brevo > Security > Authorized IPs.";
+      }
       if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("timeout")) {
         return "No hay conexión con el servicio de usuarios en este momento.";
       }
