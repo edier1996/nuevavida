@@ -6,8 +6,6 @@ const crypto = require("crypto")
 const {
   sendPasswordResetEmail,
   sendVerificationEmail,
-  getSmtpConfigStatus,
-  verifySmtpConnection,
 } = require("../config/email")
 
 const router = express.Router()
@@ -194,15 +192,8 @@ router.post("/register", async (req, res) => {
       emailSent = true;
       console.log(`✅ Verification email sent to ${email}`);
     } catch (mailError) {
-      const smtpProbe = await verifySmtpConnection();
-      emailError = mailError?.message || "SMTP delivery failed";
+      emailError = mailError?.message || "Email delivery failed";
       console.error(`❌ Failed to send verification email to ${email}:`, emailError);
-      console.error("SMTP status:", {
-        ...getSmtpConfigStatus(),
-        probeOk: smtpProbe.ok,
-        probeCode: smtpProbe.code,
-        probeError: smtpProbe.error,
-      });
       // Don't throw - we still want to return success
     }
 
@@ -598,15 +589,8 @@ router.post("/resend-verification-code", async (req, res) => {
       emailSent = true;
       console.log(`✅ Verification email resent to ${email}`);
     } catch (mailError) {
-      const smtpProbe = await verifySmtpConnection();
-      emailError = mailError?.message || "SMTP delivery failed";
+      emailError = mailError?.message || "Email delivery failed";
       console.error(`❌ Failed to resend verification email to ${email}:`, emailError);
-      console.error("SMTP status:", {
-        ...getSmtpConfigStatus(),
-        probeOk: smtpProbe.ok,
-        probeCode: smtpProbe.code,
-        probeError: smtpProbe.error,
-      });
       // Don't throw - we still want to return success
     }
 
