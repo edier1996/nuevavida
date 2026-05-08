@@ -203,11 +203,11 @@ const AdminDashboard = () => {
       const updated = await updateRequestStatus(id, "delivered");
       setRequests(updated);
       if (req?.productId) {
-        try {
-          await updateProduct(req.productId, { donationStatus: "entregado", sold: true });
-        } catch {
-          // No bloquear el flujo si falla la actualización del producto
-        }
+        await updateProduct(req.productId, {
+          donationStatus: "entregado",
+          sold: true,
+          status: "sold",
+        });
       }
       toast({
         title: "Entrega cerrada",

@@ -13,6 +13,7 @@ import {
   type ProductRequest,
 } from "@/lib/requests";
 import { sendMessage as sendMessageApi } from "@/lib/messaging-api";
+import { updateProduct } from "@/lib/products-api";
 
 const statusColors: Record<ProductRequest["status"], string> = {
   pending: "bg-amber-500",
@@ -45,6 +46,15 @@ const statusText = (status: ProductRequest["status"]) => {
   }
 };
 
+const toVisibleInquiries = (items: ProductRequest[]) =>
+  items
+    .filter((request) => request.status !== "rejected" && request.status !== "delivered")
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
 const WorkerDashboard = () => {
   const { user } = useAuth();
   const [inquiries, setInquiries] = useState<ProductRequest[]>([]);
@@ -60,14 +70,7 @@ const WorkerDashboard = () => {
     setIsLoading(true);
     try {
       const all = await getRequests();
-      const filtered = all
-        .filter((r) => r.status !== "rejected")
-        .sort(
-          (a, b) =>
-            b.score - a.score ||
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      setInquiries(filtered);
+      setInquiries(toVisibleInquiries(all));
     } catch (err) {
       toast({
         title: "Error",
@@ -85,15 +88,23 @@ const WorkerDashboard = () => {
 
   const changeStatus = async (id: string, status: ProductRequest["status"]) => {
     try {
+      const targetInquiry = inquiries.find((inquiry) => inquiry.id === id);
       const updated = await updateRequestStatus(id, status);
-      const filtered = updated
-        .filter((r) => r.status !== "rejected")
-        .sort(
-          (a, b) =>
-            b.score - a.score ||
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      setInquiries(filtered);
+      if (targetInquiry?.productId) {
+        if (status === "in_review") {
+          await updateProduct(targetInquiry.productId, { donationStatus: "en_proceso" });
+        }
+
+        if (status === "delivered") {
+          await updateProduct(targetInquiry.productId, {
+            donationStatus: "entregado",
+            sold: true,
+            status: "sold",
+          });
+        }
+      }
+
+      setInquiries(toVisibleInquiries(updated));
     } catch (err) {
       toast({
         title: "Error",
@@ -162,6 +173,8 @@ const WorkerDashboard = () => {
       for (const competitor of competitors) {
         await updateRequestStatus(competitor.id, "rejected");
       }
+
+      await updateProduct(selected.productId, { donationStatus: "en_proceso" });
 
       // 3) Notify winner and others through chat API
       try {
