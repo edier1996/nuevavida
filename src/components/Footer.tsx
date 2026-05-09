@@ -32,31 +32,31 @@ const Footer = () => {
           {/* Left Column - Pillars Section */}
           <div>
             <Link to="/" className="flex items-center gap-2.5 mb-3">
-              <img src={logo} alt="Nueva Vida" className="h-10 w-10 rounded-lg border border-white/30 object-cover" />
+              <img src={logo} alt="Nueva Vida" className="h-9 w-9 rounded-lg border border-white/30 object-cover" />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">Comunidad Nueva Vida</p>
-                <span className="text-base font-semibold tracking-tight text-white">Nueva Vida</span>
+                <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/70">Comunidad Nueva Vida</p>
+                <span className="text-sm font-semibold tracking-tight text-white">Nueva Vida</span>
               </div>
             </Link>
-            <p className="text-xs leading-5 text-white/80 mb-2">
+            <p className="text-[11px] leading-4 text-white/80 mb-1.5">
               Plataforma solidaria que transforma donaciones en esperanza. Somos un{" "}
               <span className="font-semibold text-emerald-300">movimiento social, ambiental, educativo y humanitario</span> que construye un mundo mejor.
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/75 mb-2">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-white/75 mb-1.5">
               Economía circular con impacto local
             </p>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-4 gap-1">
               {pillars.map((pillar, idx) => (
-                <div key={idx} className="rounded-md border border-emerald-400/40 bg-emerald-800/30 p-1.5 text-center text-[9px]">
-                  <div className="text-sm">{pillar.icon}</div>
-                  <h4 className="font-bold uppercase tracking-wide text-emerald-200 text-[8px] leading-tight">
+                <div key={idx} className="rounded-sm border border-emerald-400/40 bg-emerald-800/30 p-1 text-center">
+                  <div className="text-xs">{pillar.icon}</div>
+                  <h4 className="font-bold uppercase tracking-wider text-emerald-200 text-[7px] leading-tight mt-0.5">
                     {pillar.title.split(" ")[0]}
                   </h4>
-                  <p className="text-[7px] leading-tight text-white/70 mt-0.5">{pillar.description}</p>
+                  <p className="text-[6px] leading-tight text-white/70 mt-0.5 line-clamp-2">{pillar.description}</p>
                 </div>
               ))}
             </div>
-            <p className="text-[10px] font-semibold text-center mt-2 text-emerald-300">
+            <p className="text-[9px] font-semibold text-center mt-1.5 text-emerald-300">
               💚 Pequeñas acciones, gran impacto.
             </p>
           </div>
