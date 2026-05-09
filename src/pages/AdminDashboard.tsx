@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Users, UserPlus } from "lucide-react";
+import { Trash2, Users, UserPlus, ClipboardList, CheckCircle2, Clock3, BarChart3 } from "lucide-react";
 import logo from "@/assets/logo.jpeg";
 import { Link } from "react-router-dom";
 import { getRequests, updateRequestStatus, type ProductRequest } from "@/lib/requests";
@@ -27,6 +27,7 @@ const AdminDashboard = () => {
   });
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [roleStats, setRoleStats] = useState({ admin: 0, worker: 0, user: 0 });
   const [requests, setRequests] = useState<ProductRequest[]>([]);
 
   if (!user || user.role !== 'admin') {
@@ -42,6 +43,7 @@ const AdminDashboard = () => {
         ]);
         setUsers(usersResponse.users);
         setTotalUsers(statsResponse.totalUsers);
+        setRoleStats(statsResponse.totalByRole);
       } catch (err) {
         toast({
           title: "Error al cargar usuarios",
@@ -104,6 +106,7 @@ const AdminDashboard = () => {
         ]);
         setUsers(usersResponse.users);
         setTotalUsers(statsResponse.totalUsers);
+        setRoleStats(statsResponse.totalByRole);
       } catch {
         // noop: el usuario ya fue creado, la recarga se puede intentar luego.
       }
@@ -155,6 +158,7 @@ const AdminDashboard = () => {
       ]);
       setUsers(usersResponse.users);
       setTotalUsers(statsResponse.totalUsers);
+      setRoleStats(statsResponse.totalByRole);
       toast({
         title: "Usuario eliminado",
         description: "El total de usuarios fue recalculado con la base de datos actual.",
@@ -236,6 +240,36 @@ const AdminDashboard = () => {
     }
   };
 
+  const requestStats = useMemo(() => {
+    const total = requests.length;
+    const pending = requests.filter((r) => r.status === "pending").length;
+    const inReview = requests.filter((r) => r.status === "in_review").length;
+    const selected = requests.filter((r) => r.status === "selected").length;
+    const delivered = requests.filter((r) => r.status === "delivered").length;
+    const rejected = requests.filter((r) => r.status === "rejected").length;
+    const open = pending + inReview + selected;
+
+    const highNeed = requests.filter((r) => r.needLevel === "alta").length;
+    const mediumNeed = requests.filter((r) => r.needLevel === "media").length;
+    const lowNeed = requests.filter((r) => r.needLevel === "baja").length;
+
+    const deliveryRate = total > 0 ? Math.round((delivered / total) * 100) : 0;
+
+    return {
+      total,
+      pending,
+      inReview,
+      selected,
+      delivered,
+      rejected,
+      open,
+      highNeed,
+      mediumNeed,
+      lowNeed,
+      deliveryRate,
+    };
+  }, [requests]);
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center gap-3 mb-6">
@@ -249,6 +283,86 @@ const AdminDashboard = () => {
       </div>
 
       <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Rendimiento de la plataforma
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Resumen en tiempo real de registros, solicitudes y entregas.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-xl border bg-background p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Personas registradas</p>
+                <p className="mt-2 text-2xl font-bold">{totalUsers}</p>
+              </div>
+              <div className="rounded-xl border bg-background p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Solicitudes montadas</p>
+                <p className="mt-2 text-2xl font-bold">{requestStats.total}</p>
+              </div>
+              <div className="rounded-xl border bg-background p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Entregas realizadas</p>
+                <p className="mt-2 text-2xl font-bold text-emerald-700">{requestStats.delivered}</p>
+              </div>
+              <div className="rounded-xl border bg-background p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Peticiones pendientes</p>
+                <p className="mt-2 text-2xl font-bold text-amber-700">{requestStats.open}</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="rounded-xl border p-4">
+                <p className="mb-3 text-sm font-semibold">Solicitudes por estado</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between"><span>Pendientes</span><Badge variant="secondary">{requestStats.pending}</Badge></div>
+                  <div className="flex items-center justify-between"><span>En revisión</span><Badge variant="secondary">{requestStats.inReview}</Badge></div>
+                  <div className="flex items-center justify-between"><span>Seleccionadas</span><Badge variant="secondary">{requestStats.selected}</Badge></div>
+                  <div className="flex items-center justify-between"><span>Entregadas</span><Badge variant="outline">{requestStats.delivered}</Badge></div>
+                  <div className="flex items-center justify-between"><span>Rechazadas</span><Badge variant="secondary">{requestStats.rejected}</Badge></div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border p-4">
+                <p className="mb-3 text-sm font-semibold">Usuarios por rol</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between"><span>Administradores</span><Badge variant="secondary">{roleStats.admin}</Badge></div>
+                  <div className="flex items-center justify-between"><span>Trabajadores</span><Badge variant="secondary">{roleStats.worker}</Badge></div>
+                  <div className="flex items-center justify-between"><span>Usuarios</span><Badge variant="secondary">{roleStats.user}</Badge></div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border p-4">
+                <p className="mb-3 text-sm font-semibold">Detalle operativo</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-4 w-4 text-emerald-700" /> Tasa de entrega</span>
+                    <span className="font-semibold">{requestStats.deliveryRate}%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1"><Clock3 className="h-4 w-4 text-amber-700" /> En cola</span>
+                    <span className="font-semibold">{requestStats.open}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1"><ClipboardList className="h-4 w-4 text-sky-700" /> Necesidad alta</span>
+                    <span className="font-semibold">{requestStats.highNeed}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Necesidad media</span>
+                    <span className="font-semibold">{requestStats.mediumNeed}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Necesidad baja</span>
+                    <span className="font-semibold">{requestStats.lowNeed}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
