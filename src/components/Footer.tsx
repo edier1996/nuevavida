@@ -31,32 +31,32 @@ const Footer = () => {
         <div className="grid gap-6 md:grid-cols-[1.2fr_0.8fr_0.8fr_0.8fr]">
           {/* Left Column - Pillars Section */}
           <div>
-            <Link to="/" className="flex items-center gap-2.5 mb-4">
-              <img src={logo} alt="Nueva Vida" className="h-11 w-11 rounded-xl border border-white/30 object-cover" />
+            <Link to="/" className="flex items-center gap-2.5 mb-3">
+              <img src={logo} alt="Nueva Vida" className="h-10 w-10 rounded-lg border border-white/30 object-cover" />
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">Comunidad Nueva Vida</p>
-                <span className="text-lg font-semibold tracking-tight text-white">Nueva Vida</span>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">Comunidad Nueva Vida</p>
+                <span className="text-base font-semibold tracking-tight text-white">Nueva Vida</span>
               </div>
             </Link>
-            <p className="text-sm leading-6 text-white/80 mb-3">
+            <p className="text-xs leading-5 text-white/80 mb-2">
               Plataforma solidaria que transforma donaciones en esperanza. Somos un{" "}
               <span className="font-semibold text-emerald-300">movimiento social, ambiental, educativo y humanitario</span> que construye un mundo mejor.
             </p>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/75 mb-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/75 mb-2">
               Economía circular con impacto local
             </p>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-1.5">
               {pillars.map((pillar, idx) => (
-                <div key={idx} className="rounded-lg border border-emerald-400/40 bg-emerald-800/30 p-2.5 text-center text-xs">
-                  <div className="mb-1 text-lg">{pillar.icon}</div>
-                  <h4 className="font-bold uppercase tracking-wider text-emerald-200 text-[10px]">
+                <div key={idx} className="rounded-md border border-emerald-400/40 bg-emerald-800/30 p-1.5 text-center text-[9px]">
+                  <div className="text-sm">{pillar.icon}</div>
+                  <h4 className="font-bold uppercase tracking-wide text-emerald-200 text-[8px] leading-tight">
                     {pillar.title.split(" ")[0]}
                   </h4>
-                  <p className="text-[9px] leading-tight text-white/70 mt-1">{pillar.description}</p>
+                  <p className="text-[7px] leading-tight text-white/70 mt-0.5">{pillar.description}</p>
                 </div>
               ))}
             </div>
-            <p className="text-xs font-semibold text-center mt-3 text-emerald-300">
+            <p className="text-[10px] font-semibold text-center mt-2 text-emerald-300">
               💚 Pequeñas acciones, gran impacto.
             </p>
           </div>
