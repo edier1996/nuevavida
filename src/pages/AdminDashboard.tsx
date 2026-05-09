@@ -31,7 +31,7 @@ const AdminDashboard = () => {
   const [requests, setRequests] = useState<ProductRequest[]>([]);
 
   if (!user || user.role !== 'admin') {
-    return <div>No tienes permisos para acceder a esta pÃ¡gina.</div>;
+    return <div>No tienes permisos para acceder a esta pagina.</div>;
   }
 
   useEffect(() => {
@@ -277,7 +277,7 @@ const AdminDashboard = () => {
           <img src={logo} alt="Logo Nueva Vida" className="h-12 w-12 rounded-full object-cover" />
         </Link>
         <div>
-          <h1 className="text-3xl font-bold">Panel de AdministraciÃ³n</h1>
+          <h1 className="text-3xl font-bold">Panel de Administracion</h1>
           <p className="text-sm text-muted-foreground">Gestiona usuarios y roles de la plataforma.</p>
         </div>
       </div>
@@ -392,22 +392,22 @@ const AdminDashboard = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="password">ContraseÃ±a</Label>
+                <Label htmlFor="password">Contrasena</Label>
                 <Input
                   id="password"
                   type="password"
                   value={newUser.password}
                   onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                  placeholder="ContraseÃ±a segura"
+                  placeholder="Contrasena segura"
                 />
               </div>
               <div>
-                <Label htmlFor="phone">TelÃ©fono</Label>
+                <Label htmlFor="phone">Telefono</Label>
                 <Input
                   id="phone"
                   value={newUser.phone}
                   onChange={(e) => setNewUser({...newUser, phone: e.target.value})}
-                  placeholder="NÃºmero de telÃ©fono"
+                  placeholder="Numero de telefono"
                 />
               </div>
               <div>
@@ -420,12 +420,12 @@ const AdminDashboard = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="address">DirecciÃ³n</Label>
+                <Label htmlFor="address">Direccion</Label>
                 <Input
                   id="address"
                   value={newUser.address}
                   onChange={(e) => setNewUser({...newUser, address: e.target.value})}
-                  placeholder="DirecciÃ³n completa"
+                  placeholder="Direccion completa"
                 />
               </div>
               <div>
@@ -452,7 +452,7 @@ const AdminDashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              GestiÃ³n de Usuarios
+              Gestion de Usuarios
             </CardTitle>
             <p className="text-sm text-muted-foreground">
               Total actual en base de datos: <span className="font-semibold text-foreground">{totalUsers}</span>
@@ -460,7 +460,7 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             {users.length === 0 ? (
-              <p className="text-muted-foreground">No hay usuarios registrados aÃºn.</p>
+              <p className="text-muted-foreground">No hay usuarios registrados aun.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -469,7 +469,7 @@ const AdminDashboard = () => {
                       <th className="py-2 pr-3">Nombre</th>
                       <th className="py-2 pr-3">Email</th>
                       <th className="py-2 pr-3">Rol</th>
-                      <th className="py-2 pr-3">TelÃ©fono</th>
+                      <th className="py-2 pr-3">Telefono</th>
                       <th className="py-2 pr-3">Ciudad</th>
                       <th className="py-2 pr-3 text-right">Acciones</th>
                     </tr>
@@ -477,11 +477,11 @@ const AdminDashboard = () => {
                   <tbody className="divide-y">
                     {users.map((u) => (
                       <tr key={u.id}>
-                        <td className="py-2 pr-3">{u.name || "â€”"}</td>
+                        <td className="py-2 pr-3">{u.name || "-"}</td>
                         <td className="py-2 pr-3">{u.email}</td>
                         <td className="py-2 pr-3 capitalize">{u.role}</td>
-                        <td className="py-2 pr-3">{u.phone || "â€”"}</td>
-                        <td className="py-2 pr-3">{u.city || "â€”"}</td>
+                        <td className="py-2 pr-3">{u.phone || "-"}</td>
+                        <td className="py-2 pr-3">{u.city || "-"}</td>
                         <td className="py-2 pr-3 text-right">
                           <Button
                             size="sm"

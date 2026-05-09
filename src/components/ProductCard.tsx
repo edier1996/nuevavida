@@ -15,7 +15,7 @@ const timeAgo = (date: string) => {
   const days = Math.floor(diff / 86400000);
   if (days === 0) return "Hoy";
   if (days === 1) return "Ayer";
-  if (days < 7) return `Hace ${days} dÃ­as`;
+  if (days < 7) return `Hace ${days} dias`;
   return `Hace ${Math.floor(days / 7)} sem`;
 };
 
