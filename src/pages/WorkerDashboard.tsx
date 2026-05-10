@@ -101,6 +101,19 @@ const WorkerDashboard = () => {
             sold: true,
             status: "sold",
           });
+
+          try {
+            await sendMessageApi({
+              participantIds: [user.id, targetInquiry.requesterId],
+              senderId: user.id,
+              senderName: user.name,
+              content: `Tu solicitud para "${targetInquiry.productTitle}" ya fue marcada como entregada.`,
+              productId: targetInquiry.productId,
+              orderId: targetInquiry.id,
+            });
+          } catch {
+            // Non-blocking notification failure.
+          }
         }
       }
 

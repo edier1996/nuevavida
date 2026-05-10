@@ -141,6 +141,29 @@ const MyRequests = () => {
     return () => clearInterval(interval);
   }, [selectedConversation, user]);
 
+  // Auto-polling de estados: refresca solicitudes cada 6s para reflejar
+  // cambios como "Seleccionado" y "Entregado" sin recargar la pagina.
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const pollRequests = async () => {
+      if (document.visibilityState === "hidden") return;
+      try {
+        const refreshed = await getRequestsByUser(user.id);
+        setRequests(refreshed);
+        setSelectedId((prev) => {
+          if (prev && refreshed.some((request) => request.id === prev)) return prev;
+          return refreshed[0]?.id || null;
+        });
+      } catch {
+        // Ignore transient polling errors.
+      }
+    };
+
+    const interval = setInterval(pollRequests, 6000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user]);
+
   const selectedMessages = useMemo(() => {
     if (!selectedConversation) return [];
     return messagesByConversation[selectedConversation.id] || [];

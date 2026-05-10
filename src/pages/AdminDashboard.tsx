@@ -13,6 +13,7 @@ import { Link } from "react-router-dom";
 import { getRequests, updateRequestStatus, type ProductRequest } from "@/lib/requests";
 import { deleteAdminUserFromDatabase, fetchAdminUserStats, fetchAdminUsers, type AdminUserRecord } from "@/lib/user-api";
 import { updateProduct } from "@/lib/products-api";
+import { sendMessage as sendMessageApi } from "@/lib/messaging-api";
 
 const AdminDashboard = () => {
   const { user, createUser } = useAuth();
@@ -176,8 +177,27 @@ const AdminDashboard = () => {
   const handleSelectRequest = async (id: string) => {
     try {
       const req = requests.find((r) => r.id === id);
-      const updated = await updateRequestStatus(id, "selected");
-      setRequests(updated);
+      if (!req) {
+        throw new Error("No se encontro la solicitud seleccionada.");
+      }
+
+      const competitors = requests.filter(
+        (r) =>
+          r.productId === req.productId &&
+          r.id !== req.id &&
+          r.status !== "rejected" &&
+          r.status !== "delivered"
+      );
+
+      await updateRequestStatus(id, "selected");
+
+      for (const competitor of competitors) {
+        await updateRequestStatus(competitor.id, "rejected");
+      }
+
+      const refreshed = await getRequests();
+      setRequests(refreshed);
+
       if (req?.productId) {
         try {
           await updateProduct(req.productId, { donationStatus: "en_proceso" });
@@ -185,9 +205,38 @@ const AdminDashboard = () => {
           // No bloquear el flujo si falla la actualización del producto
         }
       }
+
+      try {
+        await sendMessageApi({
+          participantIds: [user.id, req.requesterId],
+          senderId: user.id,
+          senderName: user.name,
+          content: `Tu solicitud para "${req.productTitle}" fue seleccionada como beneficiaria. Pronto coordinaremos la entrega.`,
+          productId: req.productId,
+          orderId: req.id,
+        });
+      } catch {
+        // Non-blocking notification failure.
+      }
+
+      for (const competitor of competitors) {
+        try {
+          await sendMessageApi({
+            participantIds: [user.id, competitor.requesterId],
+            senderId: user.id,
+            senderName: user.name,
+            content: `Tu solicitud para "${competitor.productTitle}" no fue seleccionada en esta ocasion. Gracias por participar.`,
+            productId: competitor.productId,
+            orderId: competitor.id,
+          });
+        } catch {
+          // Non-blocking notification failure.
+        }
+      }
+
       toast({
         title: "Beneficiario seleccionado",
-        description: "Se bloquearon nuevas solicitudes y el producto quedó en proceso de entrega.",
+        description: "Se selecciono un beneficiario, se cerraron las demas solicitudes y se envio una notificacion.",
       });
     } catch (err) {
       toast({
@@ -204,6 +253,10 @@ const AdminDashboard = () => {
   const handleMarkDelivered = async (id: string) => {
     try {
       const req = requests.find((r) => r.id === id);
+      if (!req) {
+        throw new Error("No se encontro la solicitud para marcar como entregada.");
+      }
+
       const updated = await updateRequestStatus(id, "delivered");
       setRequests(updated);
       if (req?.productId) {
@@ -213,9 +266,23 @@ const AdminDashboard = () => {
           status: "sold",
         });
       }
+
+      try {
+        await sendMessageApi({
+          participantIds: [user.id, req.requesterId],
+          senderId: user.id,
+          senderName: user.name,
+          content: `Tu solicitud para "${req.productTitle}" ya fue marcada como entregada. Gracias por ser parte de Nueva Vida.`,
+          productId: req.productId,
+          orderId: req.id,
+        });
+      } catch {
+        // Non-blocking notification failure.
+      }
+
       toast({
         title: "Entrega cerrada",
-        description: "El producto quedó marcado como entregado y se quitó de la página principal.",
+        description: "El producto se marco como entregado y el solicitante fue notificado.",
       });
     } catch (err) {
       toast({
