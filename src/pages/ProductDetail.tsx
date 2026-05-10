@@ -33,7 +33,6 @@ const ProductDetail = () => {
   const [extraNotes, setExtraNotes] = useState("");
   const [needLevel, setNeedLevel] = useState<NeedLevel>("alta");
   const [householdSize, setHouseholdSize] = useState("");
-  const [evidence, setEvidence] = useState<string | null>(null);
   const [requesterCity, setRequesterCity] = useState("");
   const [acceptPolicy, setAcceptPolicy] = useState(false);
   const [formError, setFormError] = useState("");
@@ -59,20 +58,6 @@ const ProductDetail = () => {
 
   const product = useMemo(() => allProducts.find((p) => p.id === id), [allProducts, id]);
   const donationStatus = product?.donationStatus ?? "disponible";
-
-  const handleEvidenceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) {
-      setFormError("La evidencia supera los 5MB. Sube una imagen más ligera.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setEvidence(reader.result as string);
-    reader.onerror = () => setFormError("No pudimos leer el archivo. Intenta nuevamente.");
-    reader.readAsDataURL(file);
-  };
 
   const submitRequest = async () => {
     if (!isAuthenticated) {
@@ -123,7 +108,6 @@ const ProductDetail = () => {
         intendedUse,
         pickupWindow,
         extraNotes,
-        evidence: evidence || undefined,
       });
     } catch (err) {
       toast({
@@ -171,7 +155,6 @@ const ProductDetail = () => {
     setExtraNotes("");
     setNeedLevel("alta");
     setHouseholdSize("");
-    setEvidence(null);
     setRequesterCity(user.city || "");
     setAcceptPolicy(false);
 
@@ -476,29 +459,6 @@ const ProductDetail = () => {
                 onChange={(e) => setRequesterCity(e.target.value)}
                 placeholder="Solo ciudad o barrio, sin direcciones exactas"
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Evidencia (opcional)</Label>
-              <div className="flex items-center gap-3">
-                <input type="file" accept="image/*" onChange={handleEvidenceUpload} className="text-sm" />
-                {evidence && (
-                  <button
-                    type="button"
-                    onClick={() => setEvidence(null)}
-                    className="text-xs text-destructive underline"
-                  >
-                    Quitar
-                  </button>
-                )}
-              </div>
-              {evidence && (
-                <img
-                  src={evidence}
-                  alt="Evidencia"
-                  className="h-24 w-auto rounded-md border"
-                />
-              )}
             </div>
 
             <div className="flex items-start gap-3 rounded-md border border-secondary/70 p-3">
