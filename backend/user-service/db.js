@@ -12,5 +12,6 @@ const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, proces
 const User = require('./models/user')(sequelize)
 const TempRegistration = require('./models/tempRegistration')(sequelize)
 const Notification = require('./models/notification')(sequelize)
+const PageFeedback = require('./models/pageFeedback')(sequelize)
 
-module.exports = { sequelize, User, TempRegistration, Notification }
+module.exports = { sequelize, User, TempRegistration, Notification, PageFeedback }

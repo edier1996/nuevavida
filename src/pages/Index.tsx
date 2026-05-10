@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import ProductCard from "@/components/ProductCard";
 import CategoryFilter from "@/components/CategoryFilter";
+import PageFeedbackSection from "@/components/PageFeedbackSection";
 import Footer from "@/components/Footer";
 import { mockProducts, type Category, type Product } from "@/lib/mock-data";
 import { fetchProducts } from "@/lib/products-api";
@@ -255,6 +256,8 @@ const Index = () => {
           )}
         </div>
       </section>
+
+      <PageFeedbackSection />
 
       <Footer />
     </div>

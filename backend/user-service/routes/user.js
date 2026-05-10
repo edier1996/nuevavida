@@ -1,8 +1,9 @@
 const express = require("express")
-const { User, TempRegistration, Notification } = require("../db")
+const { User, TempRegistration, Notification, PageFeedback, sequelize } = require("../db")
 const argon2 = require("argon2")
 const jwt = require("jsonwebtoken")
 const crypto = require("crypto")
+const { Op } = require("sequelize")
 const {
   sendPasswordResetEmail,
   sendVerificationEmail,
@@ -294,6 +295,83 @@ router.put('/:id/favorites', auth, async (req, res) => {
     res.json({ favorites })
   } catch (error) {
     res.status(500).json({ error: error.message })
+  }
+})
+
+// Public feedback listing for homepage
+router.get('/feedback', async (_req, res) => {
+  try {
+    const reviews = await PageFeedback.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 40,
+    })
+
+    const total = await PageFeedback.count()
+    const averageRaw = await PageFeedback.findOne({
+      attributes: [[sequelize.fn('AVG', sequelize.col('rating')), 'avgRating']],
+      raw: true,
+    })
+
+    const averageRating = Number(averageRaw?.avgRating || 0)
+
+    return res.json({
+      reviews,
+      summary: {
+        averageRating: Number(averageRating.toFixed(1)),
+        total,
+      },
+    })
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'Server error' })
+  }
+})
+
+// Authenticated users can rate and comment about the platform
+router.post('/feedback', auth, async (req, res) => {
+  try {
+    const { rating, comment } = req.body || {}
+    const numericRating = Number(rating)
+    const normalizedComment = String(comment || '').trim()
+
+    if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({ error: 'La calificacion debe ser un entero entre 1 y 5' })
+    }
+
+    if (normalizedComment.length < 8) {
+      return res.status(400).json({ error: 'El comentario debe tener al menos 8 caracteres' })
+    }
+
+    const user = await User.findByPk(req.user)
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' })
+    }
+
+    const recentDuplicate = await PageFeedback.findOne({
+      where: {
+        userId: user.id,
+        comment: normalizedComment,
+        createdAt: {
+          [Op.gte]: new Date(Date.now() - 2 * 60 * 1000),
+        },
+      },
+      order: [['createdAt', 'DESC']],
+    })
+
+    if (recentDuplicate) {
+      return res.status(409).json({ error: 'Ya enviaste este comentario hace un momento' })
+    }
+
+    const review = await PageFeedback.create({
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      rating: numericRating,
+      comment: normalizedComment,
+    })
+
+    return res.status(201).json({ review })
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'Server error' })
   }
 })
 
