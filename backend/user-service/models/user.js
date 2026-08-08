@@ -53,14 +53,18 @@ module.exports = (sequelize) => {
     },
     favorites: {
       type: DataTypes.TEXT,
-      allowNull: true,
       defaultValue: '[]',
+      allowNull: false,
       get() {
-        const raw = this.getDataValue('favorites');
-        try { return raw ? JSON.parse(raw) : []; } catch { return []; }
+        const value = this.getDataValue('favorites');
+        try {
+          return typeof value === 'string' ? JSON.parse(value) : value;
+        } catch {
+          return [];
+        }
       },
-      set(val) {
-        this.setDataValue('favorites', JSON.stringify(val || []));
+      set(value) {
+        this.setDataValue('favorites', typeof value === 'string' ? value : JSON.stringify(value));
       },
     },
   }, {
